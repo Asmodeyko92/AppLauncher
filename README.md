@@ -1,3 +1,7 @@
+
+<img width="1919" height="1079" alt="Screenshot 2026-08-09 185958" src="https://github.com/user-attachments/assets/0f8fb6b3-7b05-4ad5-a553-d0c0e98b76d6" />
+
+
 # AppLauncher for Windows
 
 Безрамочный лаунчер приложений в стиле улучшенного меню «Пуск». Проект рассчитан на Windows 10/11 x64 и .NET 8.
