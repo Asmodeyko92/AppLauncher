@@ -156,7 +156,7 @@
 
     <Grid ClipToBounds="True" DragOver="Root_DragOver" Drop="Root_Drop" MouseEnter="Root_MouseEnter">
         <ScrollViewer Style="{StaticResource WidgetContentScrollViewer}">
-            <ItemsControl x:Name="InnerItems" ItemsSource="{Binding Children}" Style="{StaticResource InnerItemsStyle}">
+            <ItemsControl x:Name="InnerItems" Style="{StaticResource InnerItemsStyle}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Button Style="{StaticResource InnerDisplayButton}"
@@ -206,15 +206,18 @@
             </ItemsControl>
         </ScrollViewer>
 
-        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
-            <StackPanel.Style>
-                <Style TargetType="StackPanel">
-                    <Setter Property="Visibility" Value="Collapsed"/>
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding Children.Count}" Value="0"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </StackPanel.Style>
+        <Button x:Name="FolderBackButton" HorizontalAlignment="Left" VerticalAlignment="Top"
+                Margin="4" Padding="7,4" Background="#B320232D" Foreground="{DynamicResource TextBrush}"
+                BorderBrush="#32FFFFFF" BorderThickness="1" Cursor="Hand" Visibility="Collapsed"
+                ToolTip="Назад к содержимому виджета" Click="FolderBack_Click">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE72B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"/>
+                <TextBlock Text="Назад" Margin="5,0,0,0" FontSize="10" FontWeight="SemiBold"/>
+            </StackPanel>
+        </Button>
+
+        <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    IsHitTestVisible="False" Visibility="Collapsed">
             <TextBlock Text="&#xE8FD;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                        Foreground="{DynamicResource AccentSolidBrush}" FontSize="22" HorizontalAlignment="Center"/>
             <TextBlock Text="Добавьте значки или выберите папку" Foreground="{DynamicResource TextBrush}" FontSize="10.5"

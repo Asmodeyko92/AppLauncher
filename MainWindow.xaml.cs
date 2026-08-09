@@ -35,7 +35,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly LauncherSettings _settings;
     private readonly DispatcherTimer _toastTimer;
     private readonly DispatcherTimer _settingsSaveTimer;
-    private readonly DispatcherTimer _edgePageTimer;
     private readonly List<LauncherItem> _availableItems = new();
     private readonly List<PageLayout> _pages = new();
     private readonly Dictionary<FrameworkElement, Transform> _reorderPreviewTransforms = new();
@@ -69,9 +68,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private bool _widgetLayoutChanged;
     private int _edgePageDirection;
     private Point _dragGhostTarget;
-    private Point _dragGhostPosition;
-    private Vector _dragGhostVelocity;
-    private TimeSpan _lastDragRenderTime;
     private HwndSource? _windowSource;
     private IntPtr _windowHandle;
     private bool _globalHotkeyRegistered;
@@ -97,7 +93,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public double IconPlateSize => IconSize + 14;
     public double FolderThumbnailSize => Math.Max(14, IconPlateSize / 2 * _settings.FolderThumbnailScale - 2);
     public bool UseFolderThumbnails => _settings.UseFolderThumbnails;
-    public string AppVersion => typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "1.9.0";
+    public string AppVersion => typeof(MainWindow).Assembly
+        .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+        .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+        .FirstOrDefault()?.InformationalVersion ?? "1.9.1 Beta";
     public Thickness TileMargin => new(_settings.GridSpacing / 2);
     public Effect? TileShadowEffect { get; private set; }
 
@@ -214,9 +213,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             _settingsSaveTimer.Stop();
             SaveLayout();
         };
-
-        _edgePageTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(520) };
-        _edgePageTimer.Tick += EdgePageTimer_Tick;
 
         Loaded += (_, _) =>
         {
@@ -635,7 +631,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         UpdatePageNavigator();
 
         var easing = new QuinticEase { EasingMode = EasingMode.EaseOut };
-        var duration = TimeSpan.FromMilliseconds(340);
+        var duration = TimeSpan.FromMilliseconds(55);
         var slideOut = new DoubleAnimation(0, -direction * travel, duration)
         {
             EasingFunction = easing,
@@ -730,7 +726,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         UpdatePageNavigator();
 
         var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
-        var duration = TimeSpan.FromMilliseconds(175);
+        var duration = TimeSpan.FromMilliseconds(35);
         var slideOut = new DoubleAnimation(0, -direction * travel, duration)
         {
             EasingFunction = easing,
@@ -1406,12 +1402,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         DragGhostRotate.Angle = 0;
 
         _dragGhostTarget = startPoint;
-        _dragGhostPosition = startPoint;
-        _dragGhostVelocity = new Vector();
-        _lastDragRenderTime = TimeSpan.Zero;
         _dragGhostActive = true;
         UpdateDragGhostTransform();
-        CompositionTarget.Rendering += DragGhost_Rendering;
 
         var entranceEase = new BackEase { Amplitude = 0.22, EasingMode = EasingMode.EaseOut };
         var scaleX = new DoubleAnimation(0.86, 1, TimeSpan.FromMilliseconds(170))
@@ -1444,7 +1436,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             return;
 
         _dragGhostActive = false;
-        CompositionTarget.Rendering -= DragGhost_Rendering;
         SetEdgePageDirection(0);
         DragGhostScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
         DragGhostScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
@@ -1457,36 +1448,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         DragGhostTranslate.Y = 0;
     }
 
-    private void DragGhost_Rendering(object? sender, EventArgs e)
-    {
-        if (!_dragGhostActive || e is not RenderingEventArgs rendering)
-            return;
-
-        var delta = _lastDragRenderTime == TimeSpan.Zero
-            ? 1d / 60
-            : Math.Clamp((rendering.RenderingTime - _lastDragRenderTime).TotalSeconds, 1d / 240, 0.05);
-        _lastDragRenderTime = rendering.RenderingTime;
-
-        var displacement = _dragGhostTarget - _dragGhostPosition;
-        var acceleration = displacement * 112 - _dragGhostVelocity * 17;
-        _dragGhostVelocity += acceleration * delta;
-        _dragGhostPosition += _dragGhostVelocity * delta;
-        UpdateDragGhostTransform();
-
-    }
-
     private void UpdateDragGhostTransform()
     {
         const double cursorOffset = 20;
-        DragGhostTranslate.X = _dragGhostPosition.X - DragGhost.Width / 2 + cursorOffset;
-        DragGhostTranslate.Y = _dragGhostPosition.Y - DragGhost.Height / 2 + cursorOffset;
-
-        var speedRatio = Math.Clamp(_dragGhostVelocity.Length / 1350, 0, 1);
-        DragGhostRotate.Angle = Math.Clamp(_dragGhostVelocity.X / 105, -9, 9);
+        DragGhostTranslate.X = _dragGhostTarget.X - DragGhost.Width / 2 + cursorOffset;
+        DragGhostTranslate.Y = _dragGhostTarget.Y - DragGhost.Height / 2 + cursorOffset;
+        DragGhostRotate.Angle = 0;
         if (!DragGhostScale.HasAnimatedProperties)
         {
-            DragGhostScale.ScaleX = 1 + speedRatio * 0.085;
-            DragGhostScale.ScaleY = 1 - speedRatio * 0.045;
+            DragGhostScale.ScaleX = 1;
+            DragGhostScale.ScaleY = 1;
         }
     }
 
@@ -1502,6 +1473,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             var point = e.GetPosition(DragVisualLayer);
             _dragGhostTarget = point;
+            UpdateDragGhostTransform();
             UpdateEdgePaging(point);
         }
 
@@ -1718,9 +1690,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             return;
 
         ++_dropPreviewGeneration;
-        var wasVisible = DropPlacementPreview.Visibility == Visibility.Visible;
-        var oldX = DropPlacementTranslate.X;
-        var oldY = DropPlacementTranslate.Y;
         var targetX = placement.Column * GridCellWidth + _settings.GridSpacing / 2;
         var targetY = placement.Row * GridCellHeight + _settings.GridSpacing / 2;
 
@@ -1741,41 +1710,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         DropPlacementPreview.Visibility = Visibility.Visible;
         DropPlacementPreview.Opacity = 1;
         _dropPreviewPlacement = placement;
-
-        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
-        if (wasVisible)
-        {
-            DropPlacementTranslate.BeginAnimation(
-                TranslateTransform.XProperty,
-                new DoubleAnimation(oldX, targetX, TimeSpan.FromMilliseconds(115))
-                {
-                    EasingFunction = easing,
-                    FillBehavior = FillBehavior.Stop
-                });
-            DropPlacementTranslate.BeginAnimation(
-                TranslateTransform.YProperty,
-                new DoubleAnimation(oldY, targetY, TimeSpan.FromMilliseconds(115))
-                {
-                    EasingFunction = easing,
-                    FillBehavior = FillBehavior.Stop
-                });
-            return;
-        }
-
-        DropPlacementPreview.BeginAnimation(
-            OpacityProperty,
-            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(120))
-            {
-                EasingFunction = easing,
-                FillBehavior = FillBehavior.Stop
-            });
-        var scaleAnimation = new DoubleAnimation(0.92, 1, TimeSpan.FromMilliseconds(135))
-        {
-            EasingFunction = easing,
-            FillBehavior = FillBehavior.Stop
-        };
-        DropPlacementScale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnimation);
-        DropPlacementScale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnimation);
     }
 
     private void UpdateDropPlacementCells(DropPlacement placement)
@@ -1821,22 +1755,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_dropPreviewPlacement is null)
             return;
 
-        var generation = ++_dropPreviewGeneration;
+        ++_dropPreviewGeneration;
         _dropPreviewPlacement = null;
-        var fade = new DoubleAnimation(DropPlacementPreview.Opacity, 0, TimeSpan.FromMilliseconds(70))
-        {
-            FillBehavior = FillBehavior.Stop
-        };
-        fade.Completed += (_, _) =>
-        {
-            if (generation != _dropPreviewGeneration)
-                return;
-            DropPlacementPreview.BeginAnimation(OpacityProperty, null);
-            DropPlacementPreview.Opacity = 0;
-            DropPlacementPreview.Visibility = Visibility.Collapsed;
-            _dropPreviewPlacement = null;
-        };
-        DropPlacementPreview.BeginAnimation(OpacityProperty, fade);
+        DropPlacementPreview.BeginAnimation(OpacityProperty, null);
+        DropPlacementPreview.Opacity = 0;
+        DropPlacementPreview.Visibility = Visibility.Collapsed;
     }
 
     private void UpdateEdgePaging(Point point)
@@ -1857,23 +1780,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             return;
 
         _edgePageDirection = direction;
-        _edgePageTimer.Stop();
         LeftEdgeCue.Visibility = direction < 0 ? Visibility.Visible : Visibility.Collapsed;
         RightEdgeCue.Visibility = direction > 0 ? Visibility.Visible : Visibility.Collapsed;
         if (direction == 0)
             return;
-
-        _edgePageTimer.Interval = TimeSpan.FromMilliseconds(520);
-        _edgePageTimer.Start();
-    }
-
-    private void EdgePageTimer_Tick(object? sender, EventArgs e)
-    {
-        if (!_dragGhostActive || _edgePageDirection == 0)
-        {
-            SetEdgePageDirection(0);
-            return;
-        }
 
         var basePage = _queuedPage ?? _currentPage;
         var targetPage = Math.Clamp(basePage + _edgePageDirection, 0, _pageCount - 1);
@@ -1884,7 +1794,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
 
         NavigateToPage(targetPage);
-        _edgePageTimer.Interval = TimeSpan.FromMilliseconds(760);
     }
 
     private void Tile_DragOver(object sender, DragEventArgs e)
