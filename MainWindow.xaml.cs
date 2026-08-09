@@ -558,10 +558,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void UpdatePageNavigator()
     {
+        var navigationPage = _queuedPage ?? _currentPage;
         PageNavigator.Visibility = _pageCount > 1 ? Visibility.Visible : Visibility.Collapsed;
-        PageNumberText.Text = $"{_currentPage + 1} / {_pageCount}";
-        PreviousPageButton.IsEnabled = _currentPage > 0 && !_isPageAnimating;
-        NextPageButton.IsEnabled = _currentPage < _pageCount - 1 && !_isPageAnimating;
+        PageNumberText.Text = $"{navigationPage + 1} / {_pageCount}";
+        PreviousPageButton.IsEnabled = navigationPage > 0;
+        NextPageButton.IsEnabled = navigationPage < _pageCount - 1;
 
         PageDotsPanel.Children.Clear();
         for (var pageIndex = 0; pageIndex < _pageCount; pageIndex++)
@@ -572,7 +573,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 Tag = pageIndex,
                 ToolTip = $"Страница {pageIndex + 1}"
             };
-            if (pageIndex == _currentPage)
+            if (pageIndex == navigationPage)
             {
                 dot.Width = 20;
                 dot.Opacity = 1;
@@ -592,6 +593,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_isPageAnimating)
         {
             _queuedPage = targetPage;
+            UpdatePageNavigator();
             return;
         }
 
@@ -630,7 +632,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         _currentPage = targetPage;
         PageViewport.IsHitTestVisible = false;
-        PageNavigator.IsHitTestVisible = false;
         UpdatePageNavigator();
 
         var easing = new QuinticEase { EasingMode = EasingMode.EaseOut };
@@ -676,7 +677,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 IncomingLauncherItems.CacheMode = null;
                 _isPageAnimating = false;
                 PageViewport.IsHitTestVisible = true;
-                PageNavigator.IsHitTestVisible = true;
                 UpdatePageNavigator();
                 ScheduleAllPagesPreRender();
 
@@ -725,7 +725,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         _currentPage = targetPage;
         PageViewport.IsHitTestVisible = false;
-        PageNavigator.IsHitTestVisible = false;
         UpdatePageNavigator();
 
         var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
@@ -754,7 +753,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             _incomingSnapshotTranslate.X = 0;
             _isPageAnimating = false;
             PageViewport.IsHitTestVisible = true;
-            PageNavigator.IsHitTestVisible = true;
             UpdatePageNavigator();
 
             // Сначала пользователь получает готовый кадр, затем в простое WPF
@@ -1023,19 +1021,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             || _pageCount <= 1)
             return;
 
-        // Высокоточные мыши и тачпады посылают целую пачку Wheel-событий за один
-        // жест. Раньше они выстраивали очередь из нескольких тяжёлых страниц.
-        // Пока идёт переход, просто поглощаем хвост уже начатого жеста.
-        if (_isPageAnimating)
-        {
-            e.Handled = true;
-            return;
-        }
-
-        // Реагируем на первый же импульс ролика. Повторные импульсы того же
-        // щелчка всё равно отсекаются флагом активной анимации.
+        // Каждый импульс меняет целевую страницу. Это позволяет одним жестом
+        // проскочить несколько страниц, пока текущий кадр ещё анимируется.
         var direction = e.Delta < 0 ? 1 : -1;
-        NavigateToPage(_currentPage + direction);
+        NavigateToPage((_queuedPage ?? _currentPage) + direction);
         e.Handled = true;
     }
 

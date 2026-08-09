@@ -214,7 +214,9 @@ public partial class WidgetLauncherGridView : UserControl
         if (_visibleItems is not null)
             _visibleItems.CollectionChanged += VisibleItems_CollectionChanged;
 
-        FolderBackButton.Visibility = _folderStack.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        var folder = _folderStack.Count > 0 ? _folderStack.Peek() : null;
+        FolderNavigationBar.Visibility = folder is null ? Visibility.Collapsed : Visibility.Visible;
+        FolderTitle.Text = folder?.Name ?? string.Empty;
         UpdateEmptyState();
     }
 

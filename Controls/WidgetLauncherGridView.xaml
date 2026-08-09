@@ -155,7 +155,47 @@
     </UserControl.Resources>
 
     <Grid ClipToBounds="True" DragOver="Root_DragOver" Drop="Root_Drop" MouseEnter="Root_MouseEnter">
-        <ScrollViewer Style="{StaticResource WidgetContentScrollViewer}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border x:Name="FolderNavigationBar" Grid.Row="0" Margin="4,4,4,1" Padding="4"
+                Background="#142C3140" BorderBrush="#22FFFFFF" BorderThickness="1"
+                CornerRadius="8" Visibility="Collapsed">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Button x:Name="FolderBackButton" Width="28" Height="26" Padding="0"
+                        Background="Transparent" BorderThickness="0" Cursor="Hand"
+                        Foreground="{DynamicResource TextBrush}" ToolTip="Назад к содержимому виджета"
+                        Click="FolderBack_Click">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Surface" Background="{TemplateBinding Background}" CornerRadius="6">
+                                <TextBlock Text="&#xE72B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Surface" Property="Background" Value="{DynamicResource HoverBrush}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Surface" Property="Opacity" Value="0.65"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+                <TextBlock x:Name="FolderTitle" Grid.Column="1" Margin="7,0,6,0"
+                           Foreground="{DynamicResource TextBrush}" FontSize="10.5" FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" Style="{StaticResource WidgetContentScrollViewer}">
             <ItemsControl x:Name="InnerItems" Style="{StaticResource InnerItemsStyle}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -206,17 +246,7 @@
             </ItemsControl>
         </ScrollViewer>
 
-        <Button x:Name="FolderBackButton" HorizontalAlignment="Left" VerticalAlignment="Top"
-                Margin="4" Padding="7,4" Background="#B320232D" Foreground="{DynamicResource TextBrush}"
-                BorderBrush="#32FFFFFF" BorderThickness="1" Cursor="Hand" Visibility="Collapsed"
-                ToolTip="Назад к содержимому виджета" Click="FolderBack_Click">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="&#xE72B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"/>
-                <TextBlock Text="Назад" Margin="5,0,0,0" FontSize="10" FontWeight="SemiBold"/>
-            </StackPanel>
-        </Button>
-
-        <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center"
+        <StackPanel x:Name="EmptyState" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"
                     IsHitTestVisible="False" Visibility="Collapsed">
             <TextBlock Text="&#xE8FD;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                        Foreground="{DynamicResource AccentSolidBrush}" FontSize="22" HorizontalAlignment="Center"/>
