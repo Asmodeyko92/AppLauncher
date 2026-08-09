@@ -198,8 +198,8 @@
                                 <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="32"/>
                                 </Grid.ColumnDefinitions>
-                                <RepeatButton x:Name="PART_Decrease" Grid.Column="0" Content="&#xE74B;"
-                                              FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
+                                <RepeatButton x:Name="PART_Decrease" Grid.Column="0" Content="-"
+                                              FontFamily="{StaticResource UiFont}" FontSize="16"
                                               Foreground="{TemplateBinding Foreground}" Background="Transparent"
                                               BorderThickness="0" Delay="350" Interval="80" Cursor="Hand">
                                     <RepeatButton.Template>

@@ -43,7 +43,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly TranslateTransform _outgoingSnapshotTranslate = new();
     private readonly TranslateTransform _incomingSnapshotTranslate = new();
     private readonly Dictionary<int, BitmapSource> _pageSnapshotCache = new();
-    private readonly HashSet<int> _refinedPageSnapshots = new();
     private LauncherItem? _currentFolder;
     private LauncherItem? _pressedItem;
     private LauncherItem? _activeDragItem;
@@ -364,7 +363,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         StopPageAnimation();
         _pageSnapshotGeneration++;
         _pageSnapshotCache.Clear();
-        _refinedPageSnapshots.Clear();
 
         foreach (var item in _availableItems)
             UpdateDisplayMetrics(item);
@@ -593,6 +591,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             _queuedPage = targetPage;
             UpdatePageNavigator();
+
+            // При быстрых жестах не проигрываем промежуточные страницы. Если
+            // оба кадра уже в памяти, сразу перестраиваем переход к последней
+            // запрошенной странице.
+            if (_pageSnapshotCache.TryGetValue(_currentPage, out var currentSnapshot)
+                && _pageSnapshotCache.TryGetValue(targetPage, out var targetSnapshot))
+            {
+                StopPageAnimation();
+                NavigateWithPageSnapshots(targetPage, currentSnapshot, targetSnapshot);
+            }
             return;
         }
 
@@ -896,33 +904,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             await Task.Delay(35);
         }
 
-        // Первый проход уже сделал мгновенно доступными все страницы. Второй
-        // проход лишь повышает качество кадров с документами и WebView2; он
-        // никогда не блокирует перелистывание и может быть безопасно прерван.
-        foreach (var page in pages.Where(page => page != _currentPage
-                                                 && !_refinedPageSnapshots.Contains(page)))
-        {
-            if (generation != _pageSnapshotGeneration || _isPageAnimating || !IsLoaded)
-                return;
-
-            PopulateIncomingPage(page);
-            _preparedIncomingPage = page;
-            _incomingPageTranslate.X = (page > _currentPage ? 1 : -1)
-                * Math.Max(160, PageViewport.ActualWidth + _settings.GridSpacing);
-            IncomingLauncherItems.Visibility = Visibility.Visible;
-            await Dispatcher.Yield(DispatcherPriority.Render);
-
-            if (!await WaitForWidgetContentAsync(IncomingLauncherItems, generation))
-                continue;
-            var refined = CapturePageSnapshot(IncomingLauncherItems, _incomingPageTranslate);
-            if (refined is not null)
-            {
-                _pageSnapshotCache[page] = refined;
-                _refinedPageSnapshots.Add(page);
-            }
-            await Task.Delay(35);
-        }
-
         if (generation != _pageSnapshotGeneration || _isPageAnimating)
             return;
 
@@ -932,41 +913,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _incomingPageTranslate.X = 0;
     }
 
-    private async Task<bool> WaitForWidgetContentAsync(
-        DependencyObject root,
-        int generation)
-    {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(2.4);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (generation != _pageSnapshotGeneration || _isPageAnimating || !IsLoaded)
-                return false;
-
-            var pending = EnumerateVisualChildren<WebWidgetView>(root)
-                .Any(view => view.DataContext is LauncherItem item
-                             && item.HasWidgetDocumentContent
-                             && !view.IsViewportCurrent(item));
-            if (!pending)
-                return true;
-
-            await Task.Delay(90);
-        }
-
-        return false;
-    }
-
-    private static IEnumerable<T> EnumerateVisualChildren<T>(DependencyObject root)
-        where T : DependencyObject
-    {
-        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
-        {
-            var child = VisualTreeHelper.GetChild(root, index);
-            if (child is T match)
-                yield return match;
-            foreach (var descendant in EnumerateVisualChildren<T>(child))
-                yield return descendant;
-        }
-    }
 
     private BitmapSource? CapturePageSnapshot(
         FrameworkElement visual,
@@ -977,10 +923,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (width <= 1 || height <= 1 || _pageCount <= 0)
             return null;
 
-        // Полный кэш всех страниц ограничен примерно 96 МБ. До достижения
+        // Полный кэш всех страниц ограничен примерно 160 МБ. До достижения
         // лимита кадры хранятся 1:1; при очень большом числе страниц разрешение
         // плавно уменьшается, но мгновенное перелистывание сохраняется.
-        const double memoryBudget = 96d * 1024 * 1024;
+        const double memoryBudget = 160d * 1024 * 1024;
         var fullSizeBytes = width * height * 4d * _pageCount;
         var scale = fullSizeBytes <= memoryBudget
             ? 1d
