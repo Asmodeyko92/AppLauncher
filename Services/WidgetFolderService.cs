@@ -12,19 +12,30 @@ public static class WidgetFolderService
     {
         if (!widget.IsWidgetLauncherGrid || string.IsNullOrWhiteSpace(widget.WidgetFolderPath))
             return false;
+        return RefreshChildren(widget, widget.WidgetFolderPath, force);
+    }
 
+    public static bool RefreshFolder(LauncherItem folder, bool force = false)
+    {
+        if (!folder.IsFolder || string.IsNullOrWhiteSpace(folder.Path))
+            return false;
+        return RefreshChildren(folder, folder.Path, force);
+    }
+
+    private static bool RefreshChildren(LauncherItem container, string sourcePath, bool force)
+    {
         // Measure/Arrange и анимации могут несколько раз подряд вызвать обновление
         // одного и того же виджета. Не блокируем UI повторным обходом диска.
         var now = DateTime.UtcNow;
         lock (ScanLock)
         {
-            if (!force && LastScanUtc.TryGetValue(widget.Id, out var lastScan)
+            if (!force && LastScanUtc.TryGetValue(container.Id, out var lastScan)
                 && now - lastScan < MinimumScanInterval)
                 return false;
-            LastScanUtc[widget.Id] = now;
+            LastScanUtc[container.Id] = now;
         }
 
-        var folderPath = Environment.ExpandEnvironmentVariables(widget.WidgetFolderPath);
+        var folderPath = Environment.ExpandEnvironmentVariables(sourcePath);
         if (!Directory.Exists(folderPath))
             return false;
 
@@ -42,12 +53,12 @@ public static class WidgetFolderService
             return false;
         }
 
-        if (widget.Children.Count == entries.Count
-            && widget.Children.Select(item => Normalize(item.Path))
+        if (container.Children.Count == entries.Count
+            && container.Children.Select(item => Normalize(item.Path))
                 .SequenceEqual(entries.Select(Normalize), StringComparer.OrdinalIgnoreCase))
             return false;
 
-        var existing = widget.Children
+        var existing = container.Children
             .Where(item => !string.IsNullOrWhiteSpace(item.Path))
             .GroupBy(item => Normalize(item.Path), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
@@ -59,22 +70,26 @@ public static class WidgetFolderService
             {
                 item.Name = GetDisplayName(path);
                 item.Path = path;
-                item.Kind = LauncherItemKind.Application;
+                item.Kind = Directory.Exists(path)
+                    ? LauncherItemKind.Folder
+                    : LauncherItemKind.Application;
                 refreshed.Add(item);
                 continue;
             }
 
             refreshed.Add(new LauncherItem
             {
-                Kind = LauncherItemKind.Application,
+                Kind = Directory.Exists(path)
+                    ? LauncherItemKind.Folder
+                    : LauncherItemKind.Application,
                 Name = GetDisplayName(path),
                 Path = path
             });
         }
 
-        widget.Children.Clear();
+        container.Children.Clear();
         foreach (var item in refreshed)
-            widget.Children.Add(item);
+            container.Children.Add(item);
         return true;
     }
 

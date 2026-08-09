@@ -68,6 +68,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private bool _widgetLayoutChanged;
     private int _edgePageDirection;
     private Point _dragGhostTarget;
+    private Point _dragGhostPosition;
+    private Vector _dragGhostVelocity;
+    private TimeSpan _lastDragRenderTime;
     private HwndSource? _windowSource;
     private IntPtr _windowHandle;
     private bool _globalHotkeyRegistered;
@@ -631,7 +634,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         UpdatePageNavigator();
 
         var easing = new QuinticEase { EasingMode = EasingMode.EaseOut };
-        var duration = TimeSpan.FromMilliseconds(55);
+        var duration = TimeSpan.FromMilliseconds(45);
         var slideOut = new DoubleAnimation(0, -direction * travel, duration)
         {
             EasingFunction = easing,
@@ -726,7 +729,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         UpdatePageNavigator();
 
         var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
-        var duration = TimeSpan.FromMilliseconds(35);
+        var duration = TimeSpan.FromMilliseconds(20);
         var slideOut = new DoubleAnimation(0, -direction * travel, duration)
         {
             EasingFunction = easing,
@@ -1402,8 +1405,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         DragGhostRotate.Angle = 0;
 
         _dragGhostTarget = startPoint;
+        _dragGhostPosition = startPoint;
+        _dragGhostVelocity = new Vector();
+        _lastDragRenderTime = TimeSpan.Zero;
         _dragGhostActive = true;
         UpdateDragGhostTransform();
+        CompositionTarget.Rendering += DragGhost_Rendering;
 
         var entranceEase = new BackEase { Amplitude = 0.22, EasingMode = EasingMode.EaseOut };
         var scaleX = new DoubleAnimation(0.86, 1, TimeSpan.FromMilliseconds(170))
@@ -1436,6 +1443,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             return;
 
         _dragGhostActive = false;
+        CompositionTarget.Rendering -= DragGhost_Rendering;
         SetEdgePageDirection(0);
         DragGhostScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
         DragGhostScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
@@ -1451,14 +1459,33 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void UpdateDragGhostTransform()
     {
         const double cursorOffset = 20;
-        DragGhostTranslate.X = _dragGhostTarget.X - DragGhost.Width / 2 + cursorOffset;
-        DragGhostTranslate.Y = _dragGhostTarget.Y - DragGhost.Height / 2 + cursorOffset;
-        DragGhostRotate.Angle = 0;
+        DragGhostTranslate.X = _dragGhostPosition.X - DragGhost.Width / 2 + cursorOffset;
+        DragGhostTranslate.Y = _dragGhostPosition.Y - DragGhost.Height / 2 + cursorOffset;
+
+        var speedRatio = Math.Clamp(_dragGhostVelocity.Length / 1350, 0, 1);
+        DragGhostRotate.Angle = Math.Clamp(_dragGhostVelocity.X / 105, -9, 9);
         if (!DragGhostScale.HasAnimatedProperties)
         {
-            DragGhostScale.ScaleX = 1;
-            DragGhostScale.ScaleY = 1;
+            DragGhostScale.ScaleX = 1 + speedRatio * 0.085;
+            DragGhostScale.ScaleY = 1 - speedRatio * 0.045;
         }
+    }
+
+    private void DragGhost_Rendering(object? sender, EventArgs e)
+    {
+        if (!_dragGhostActive || e is not RenderingEventArgs rendering)
+            return;
+
+        var delta = _lastDragRenderTime == TimeSpan.Zero
+            ? 1d / 60
+            : Math.Clamp((rendering.RenderingTime - _lastDragRenderTime).TotalSeconds, 1d / 240, 0.05);
+        _lastDragRenderTime = rendering.RenderingTime;
+
+        var displacement = _dragGhostTarget - _dragGhostPosition;
+        var acceleration = displacement * 112 - _dragGhostVelocity * 17;
+        _dragGhostVelocity += acceleration * delta;
+        _dragGhostPosition += _dragGhostVelocity * delta;
+        UpdateDragGhostTransform();
     }
 
     private void Window_PreviewDragOver(object sender, DragEventArgs e)
@@ -1473,7 +1500,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             var point = e.GetPosition(DragVisualLayer);
             _dragGhostTarget = point;
-            UpdateDragGhostTransform();
             UpdateEdgePaging(point);
         }
 

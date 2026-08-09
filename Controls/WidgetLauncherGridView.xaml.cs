@@ -73,6 +73,7 @@ public partial class WidgetLauncherGridView : UserControl
             return;
         if (item.IsFolder)
         {
+            WidgetFolderService.RefreshFolder(item);
             _folderStack.Push(item);
             ShowCurrentFolder();
             return;
