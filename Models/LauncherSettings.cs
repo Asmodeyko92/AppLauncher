@@ -12,6 +12,7 @@ public sealed class LauncherSettings
     public int GlobalHotkeyVirtualKey { get; set; } = 0x20;
     public bool LightTheme { get; set; }
     public bool UseFolderThumbnails { get; set; }
+    public bool OpenGroupsFullscreen { get; set; }
     public double FolderThumbnailScale { get; set; } = 0.92;
     public double WindowWidth { get; set; } = 1000;
     public double WindowHeight { get; set; } = 700;

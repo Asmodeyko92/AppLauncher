@@ -339,6 +339,7 @@
                                    Foreground="{DynamicResource MutedTextBrush}" FontFamily="{StaticResource UiFont}"
                                    FontSize="9.5" TextTrimming="CharacterEllipsis"/>
                     </Grid>
+
                 </Grid>
             </Border>
         </DataTemplate>
@@ -702,6 +703,54 @@
                     </Grid>
                 </Grid>
 
+                <Grid x:Name="FolderFlyoutLayer" Background="#75080A10" Visibility="Collapsed" Panel.ZIndex="12">
+                    <Border x:Name="FolderFlyoutPanel" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource AccentSolidBrush}"
+                            BorderThickness="1" CornerRadius="14" Padding="12">
+                        <Border.Effect><DropShadowEffect Color="#03050A" BlurRadius="28" ShadowDepth="8" Opacity="0.52"/></Border.Effect>
+                        <Grid>
+                            <Grid.RowDefinitions><RowDefinition Height="42"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <Grid>
+                                <TextBlock x:Name="FolderFlyoutTitle" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextBrush}" FontFamily="{StaticResource DisplayFont}"
+                                           FontSize="17" FontWeight="SemiBold"/>
+                                <Button HorizontalAlignment="Right" Style="{StaticResource ChromeButton}" Content="&#xE8BB;"
+                                        ToolTip="Закрыть группу" Click="CloseFolderFlyout_Click"/>
+                            </Grid>
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                          PanningMode="VerticalOnly">
+                                <ItemsControl ItemsSource="{Binding FolderFlyoutItems}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Style="{StaticResource TileButtonStyle}"
+                                                    Width="{Binding DisplayWidth}" Height="{Binding DisplayHeight}"
+                                                    Margin="{Binding TileMargin, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    Effect="{Binding TileShadowEffect, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    ToolTip="{Binding ToolTipText}" Click="FolderFlyoutTile_Click">
+                                                <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                                                    <ContentControl.Style>
+                                                        <Style TargetType="ContentControl">
+                                                            <Setter Property="ContentTemplate" Value="{StaticResource StandardTileContentTemplate}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsWidget}" Value="True">
+                                                                    <Setter Property="ContentTemplate" Value="{StaticResource WidgetTileContentTemplate}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </ContentControl.Style>
+                                                </ContentControl>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
+                </Grid>
+
                 <StackPanel x:Name="EmptyState" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Border Width="78" Height="78" Background="{DynamicResource TileBrush}" CornerRadius="17">
                         <TextBlock Text="&#xE8B7;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="32"
@@ -863,6 +912,9 @@
                                     <TextBlock Text="Группы приложений" Style="{StaticResource SettingsSubsectionTitle}"/>
                                     <CheckBox x:Name="FolderThumbnailsCheckBox" Style="{StaticResource ToggleSwitch}" Content="Миниатюры вместо значка" Checked="FolderThumbnailSettingChanged" Unchecked="FolderThumbnailSettingChanged"/>
                                     <TextBlock Text="Показывать четыре наиболее часто запускаемых приложения из группы" Margin="0,7,54,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
+                                    <CheckBox x:Name="OpenGroupsFullscreenCheckBox" Margin="0,16,0,0" Style="{StaticResource ToggleSwitch}"
+                                              Content="Открывать группы во весь экран" Checked="SettingsChanged" Unchecked="SettingsChanged"/>
+                                    <TextBlock Text="Если выключено, группа открывается компактным окном по размеру сетки, не больше 80% рабочей области." Margin="0,7,18,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
                                     <Grid Margin="0,16,0,0"><TextBlock Text="Размер миниатюр" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="FolderThumbnailSizeValueText" Style="{StaticResource SettingsValueText}"/></Grid>
                                     <controls:NumericStepper x:Name="FolderThumbnailSizeSlider" Margin="0,5,0,0" Minimum="55" Maximum="100" Step="5" IsEnabled="{Binding IsChecked, ElementName=FolderThumbnailsCheckBox}" ValueChanged="FolderThumbnailSizeChanged"/>
                                     <TextBlock Text="Размер значков внутри каждого виджета настраивается в его редакторе" Margin="0,14,0,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>

@@ -485,57 +485,66 @@
                                     <TextBlock Text="Живое редактирование" Foreground="{DynamicResource DialogPositiveBrush}" FontSize="10"/>
                                 </Border>
                             </StackPanel>
-                            <TextBlock Text="Тяните содержимое мышью · стрелки — 1 px · Shift — 10 px"
+                            <TextBlock x:Name="PreviewSizeText"
                                        HorizontalAlignment="Right" VerticalAlignment="Center"
                                        Foreground="{DynamicResource DialogMutedTextBrush}" FontSize="10.5"/>
                         </Grid>
 
-                        <Border Grid.Row="1" Background="{Binding WidgetBackgroundColor, Converter={StaticResource HexColorBrushConverter}}" BorderBrush="{DynamicResource DialogBorderBrush}"
+                        <Border Grid.Row="1" Background="#05000000" BorderBrush="{DynamicResource DialogBorderBrush}"
                                 BorderThickness="1" CornerRadius="9" ClipToBounds="True">
-                            <Grid>
-                                <Grid x:Name="PreviewContentHost">
-                                    <Grid.RenderTransform><TranslateTransform x:Name="PreviewContentTranslate"/></Grid.RenderTransform>
-                                    <controls:WebWidgetView x:Name="PreviewWidgetView" DataContext="{Binding}" Margin="1"/>
-                                    <controls:WidgetLauncherGridView x:Name="PreviewLauncherGrid" DataContext="{Binding}"
-                                                                             IsEditing="True" Margin="8,42,8,8"
-                                                                             Opacity="{Binding WidgetContentOpacity}"
-                                                                             Visibility="Collapsed"/>
-                                </Grid>
+                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                                         PanningMode="Both" Padding="12">
+                                <Border x:Name="PreviewWidgetFrame"
+                                       HorizontalAlignment="Left" VerticalAlignment="Top"
+                                       Background="{Binding WidgetBackgroundColor, Converter={StaticResource HexColorBrushConverter}}"
+                                       BorderBrush="{DynamicResource DialogBorderBrush}"
+                                       BorderThickness="1" CornerRadius="9" ClipToBounds="True">
+                                   <Grid>
+                                       <Grid x:Name="PreviewContentHost">
+                                           <Grid.RenderTransform><TranslateTransform x:Name="PreviewContentTranslate"/></Grid.RenderTransform>
+                                           <controls:WebWidgetView x:Name="PreviewWidgetView" DataContext="{Binding}" Margin="1"/>
+                                           <controls:WidgetLauncherGridView x:Name="PreviewLauncherGrid" DataContext="{Binding}"
+                                                                                 IsEditing="True" Margin="8,42,8,8"
+                                                                                 Opacity="{Binding WidgetContentOpacity}"
+                                                                                 Visibility="Collapsed"/>
+                                       </Grid>
 
-                                <Border x:Name="PreviewTitleSurface" VerticalAlignment="Top" Padding="13,9"
-                                        Background="#B8171A22" IsHitTestVisible="False" Panel.ZIndex="2">
-                                    <TextBlock Text="{Binding Name}" Foreground="White" FontSize="12.5" FontWeight="SemiBold"
-                                               TextTrimming="CharacterEllipsis"/>
+                                       <Border x:Name="PreviewTitleSurface" VerticalAlignment="Top" Padding="13,9"
+                                               Background="#B8171A22" IsHitTestVisible="False" Panel.ZIndex="2">
+                                           <TextBlock Text="{Binding Name}" Foreground="White" FontSize="12.5" FontWeight="SemiBold"
+                                                      TextTrimming="CharacterEllipsis"/>
+                                       </Border>
+
+                                       <Border x:Name="PreviewDragSurface" Background="#01000000" Cursor="SizeAll" Panel.ZIndex="3"
+                                               MouseLeftButtonDown="Preview_MouseLeftButtonDown"
+                                               MouseMove="Preview_MouseMove"
+                                               MouseLeftButtonUp="Preview_MouseLeftButtonUp"
+                                               LostMouseCapture="Preview_LostMouseCapture"
+                                               PreviewMouseWheel="Preview_MouseWheel"/>
+
+                                       <Border x:Name="PreviewDragHint" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="13"
+                                               Padding="10,6" CornerRadius="8" Background="#98212630"
+                                               BorderBrush="#30FFFFFF" BorderThickness="1" IsHitTestVisible="False" Panel.ZIndex="4">
+                                           <StackPanel Orientation="Horizontal">
+                                               <TextBlock Text="&#xE7C2;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                          Foreground="#FF9B94FF" FontSize="13" VerticalAlignment="Center"/>
+                                               <TextBlock Text="  Перетащите для позиционирования" Foreground="White" FontSize="10.5" VerticalAlignment="Center"/>
+                                           </StackPanel>
+                                       </Border>
+
+                                       <Grid x:Name="PreviewNudgePad" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="14"
+                                             Width="106" Height="106" Panel.ZIndex="6">
+                                           <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                                           <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                           <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource NudgeButton}" Content="&#xE70E;" Tag="Up" Click="NudgeViewport_Click" ToolTip="Вверх"/>
+                                           <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource NudgeButton}" Content="&#xE76B;" Tag="Left" Click="NudgeViewport_Click" ToolTip="Влево"/>
+                                           <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource NudgeButton}" Content="&#xE777;" Tag="Reset" Click="NudgeViewport_Click" ToolTip="Сбросить смещение"/>
+                                           <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource NudgeButton}" Content="&#xE76C;" Tag="Right" Click="NudgeViewport_Click" ToolTip="Вправо"/>
+                                           <Button Grid.Row="2" Grid.Column="1" Style="{StaticResource NudgeButton}" Content="&#xE70D;" Tag="Down" Click="NudgeViewport_Click" ToolTip="Вниз"/>
+                                       </Grid>
+                                   </Grid>
                                 </Border>
-
-                                <Border x:Name="PreviewDragSurface" Background="#01000000" Cursor="SizeAll" Panel.ZIndex="3"
-                                        MouseLeftButtonDown="Preview_MouseLeftButtonDown"
-                                        MouseMove="Preview_MouseMove"
-                                        MouseLeftButtonUp="Preview_MouseLeftButtonUp"
-                                        LostMouseCapture="Preview_LostMouseCapture"
-                                        PreviewMouseWheel="Preview_MouseWheel"/>
-
-                                <Border x:Name="PreviewDragHint" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="13"
-                                        Padding="10,6" CornerRadius="8" Background="#98212630"
-                                        BorderBrush="#30FFFFFF" BorderThickness="1" IsHitTestVisible="False" Panel.ZIndex="4">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="&#xE7C2;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                                   Foreground="#FF9B94FF" FontSize="13" VerticalAlignment="Center"/>
-                                        <TextBlock Text="  Перетащите для позиционирования" Foreground="White" FontSize="10.5" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-
-                                <Grid x:Name="PreviewNudgePad" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="14"
-                                      Width="106" Height="106" Panel.ZIndex="6">
-                                    <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
-                                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-                                    <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource NudgeButton}" Content="&#xE70E;" Tag="Up" Click="NudgeViewport_Click" ToolTip="Вверх"/>
-                                    <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource NudgeButton}" Content="&#xE76B;" Tag="Left" Click="NudgeViewport_Click" ToolTip="Влево"/>
-                                    <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource NudgeButton}" Content="&#xE777;" Tag="Reset" Click="NudgeViewport_Click" ToolTip="Сбросить смещение"/>
-                                    <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource NudgeButton}" Content="&#xE76C;" Tag="Right" Click="NudgeViewport_Click" ToolTip="Вправо"/>
-                                    <Button Grid.Row="2" Grid.Column="1" Style="{StaticResource NudgeButton}" Content="&#xE70D;" Tag="Down" Click="NudgeViewport_Click" ToolTip="Вниз"/>
-                                </Grid>
-                            </Grid>
+                            </ScrollViewer>
                         </Border>
                     </Grid>
                 </Border>

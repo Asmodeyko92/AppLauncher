@@ -44,6 +44,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly TranslateTransform _incomingSnapshotTranslate = new();
     private readonly Dictionary<int, BitmapSource> _pageSnapshotCache = new();
     private LauncherItem? _currentFolder;
+    private LauncherItem? _flyoutFolder;
     private LauncherItem? _pressedItem;
     private LauncherItem? _activeDragItem;
     private Guid? _previewTargetId;
@@ -86,6 +87,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     public ObservableCollection<LauncherItem> DisplayItems { get; } = new();
     public ObservableCollection<LauncherItem> IncomingPageItems { get; } = new();
+    public ObservableCollection<LauncherItem> FolderFlyoutItems { get; } = new();
     public double TileSize => _settings.TileSize;
     public double TileHeight => _settings.TileSize + 8;
     public double GridCellWidth => TileSize + _settings.GridSpacing;
@@ -185,6 +187,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         GlobalHotkeyCheckBox.IsChecked = _settings.GlobalHotkeyEnabled;
         LightThemeCheckBox.IsChecked = _settings.LightTheme;
         FolderThumbnailsCheckBox.IsChecked = _settings.UseFolderThumbnails;
+        OpenGroupsFullscreenCheckBox.IsChecked = _settings.OpenGroupsFullscreen;
         FolderThumbnailSizeSlider.Value = _settings.FolderThumbnailScale * 100;
         TileShadowCheckBox.IsChecked = _settings.TileShadowEnabled;
         TileOpacitySlider.Value = EffectiveTileOpacity * 100;
@@ -572,119 +575,54 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void NavigateToPage(int requestedPage)
     {
         var targetPage = Math.Clamp(requestedPage, 0, _pageCount - 1);
-        if (targetPage == _currentPage && !_isPageAnimating)
+        if (targetPage == _currentPage)
             return;
 
-        if (_isPageAnimating)
-        {
-            _queuedPage = targetPage;
-            UpdatePageNavigator();
+        StopPageAnimation();
+        ++_pageSnapshotGeneration;
 
-            // При быстрых жестах не проигрываем промежуточные страницы. Если
-            // оба кадра уже в памяти, сразу перестраиваем переход к последней
-            // запрошенной странице.
-            if (_pageSnapshotCache.TryGetValue(_currentPage, out var currentSnapshot)
-                && _pageSnapshotCache.TryGetValue(targetPage, out var targetSnapshot))
-            {
-                StopPageAnimation();
-                NavigateWithPageSnapshots(targetPage, currentSnapshot, targetSnapshot);
-            }
+        if (_pageSnapshotCache.TryGetValue(targetPage, out var snapshot))
+        {
+            ShowCachedPage(targetPage, snapshot);
             return;
         }
-
-        // Основной быстрый путь: обе страницы уже существуют как готовые
-        // растровые кадры. Ни разметка плиток, ни WebView2, ни эффекты теней
-        // больше не попадают в критический путь обработки колеса мыши.
-        if (_pageSnapshotCache.TryGetValue(_currentPage, out var outgoingSnapshot)
-            && _pageSnapshotCache.TryGetValue(targetPage, out var incomingSnapshot))
-        {
-            NavigateWithPageSnapshots(targetPage, outgoingSnapshot, incomingSnapshot);
-            return;
-        }
-
-        _isPageAnimating = true;
-        _queuedPage = null;
-        var generation = ++_pageAnimationGeneration;
-        var direction = targetPage > _currentPage ? 1 : -1;
-        _lastPageDirection = direction;
-        var travel = Math.Max(160, PageViewport.ActualWidth + _settings.GridSpacing);
-
-        // Если соседняя страница уже готовилась в простое, используем её живое
-        // дерево и прогретые снимки WebView2. Иначе создаём слой без блокирующего
-        // UpdateLayout — первый кадр всё равно начинается сразу.
-        if (_preparedIncomingPage != targetPage)
-            PopulateIncomingPage(targetPage);
-        _preparedIncomingPage = -1;
-        ++_pagePreloadGeneration;
-
-        _pageTranslate.BeginAnimation(TranslateTransform.XProperty, null);
-        _incomingPageTranslate.BeginAnimation(TranslateTransform.XProperty, null);
-        _pageTranslate.X = 0;
-        _incomingPageTranslate.X = direction * travel;
-        LauncherItems.CacheMode = CreatePageCache();
-        IncomingLauncherItems.CacheMode = CreatePageCache();
-        IncomingLauncherItems.Visibility = Visibility.Visible;
 
         _currentPage = targetPage;
-        PageViewport.IsHitTestVisible = false;
+        PopulateCurrentPage();
+        SetDraggedTileOpacity();
+        UpdatePageNavigator();
+        ScheduleAllPagesPreRender();
+    }
+
+    private void ShowCachedPage(int targetPage, BitmapSource snapshot)
+    {
+        var generation = ++_pageAnimationGeneration;
+        _currentPage = targetPage;
+        IncomingPageSnapshot.Source = snapshot;
+        IncomingPageSnapshot.Visibility = Visibility.Visible;
+        LauncherItems.Visibility = Visibility.Hidden;
         UpdatePageNavigator();
 
-        var easing = new QuinticEase { EasingMode = EasingMode.EaseOut };
-        var duration = TimeSpan.FromMilliseconds(45);
-        var slideOut = new DoubleAnimation(0, -direction * travel, duration)
-        {
-            EasingFunction = easing,
-            FillBehavior = FillBehavior.HoldEnd
-        };
-        var slideIn = new DoubleAnimation(direction * travel, 0, duration)
-        {
-            EasingFunction = easing,
-            FillBehavior = FillBehavior.HoldEnd
-        };
-
-        slideIn.Completed += (_, _) =>
+        // Input has priority over ContextIdle. A fast wheel gesture can therefore
+        // replace this frame immediately instead of waiting for an intermediate page.
+        Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() =>
         {
             if (generation != _pageAnimationGeneration)
                 return;
 
-            // Входящий слой уже закрывает область просмотра. Обновляем основной
-            // слой, пока он всё ещё удерживается за границей окна. Затем в одном
-            // render pass скрываем временный слой и возвращаем основной на X=0.
-            // Это исключает даже один кадр с наложением полупрозрачных плиток.
             PopulateCurrentPage();
-            LauncherItems.UpdateLayout();
             SetDraggedTileOpacity();
-
             Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
             {
                 if (generation != _pageAnimationGeneration)
                     return;
 
-                // Порядок важен: сначала скрываем верхнюю копию, затем возвращаем
-                // нижнюю. Dispatcher применит обе операции к одному кадру.
-                IncomingLauncherItems.Visibility = Visibility.Collapsed;
-                _incomingPageTranslate.BeginAnimation(TranslateTransform.XProperty, null);
-                _incomingPageTranslate.X = 0;
-                _pageTranslate.BeginAnimation(TranslateTransform.XProperty, null);
-                _pageTranslate.X = 0;
-                IncomingPageItems.Clear();
-                LauncherItems.CacheMode = null;
-                IncomingLauncherItems.CacheMode = null;
-                _isPageAnimating = false;
-                PageViewport.IsHitTestVisible = true;
-                UpdatePageNavigator();
+                LauncherItems.Visibility = Visibility.Visible;
+                IncomingPageSnapshot.Source = null;
+                IncomingPageSnapshot.Visibility = Visibility.Collapsed;
                 ScheduleAllPagesPreRender();
-
-                if (_queuedPage is int queued && queued != _currentPage)
-                {
-                    _queuedPage = null;
-                    NavigateToPage(queued);
-                }
             }));
-        };
-
-        _pageTranslate.BeginAnimation(TranslateTransform.XProperty, slideOut);
-        _incomingPageTranslate.BeginAnimation(TranslateTransform.XProperty, slideIn);
+        }));
     }
 
     private void NavigateWithPageSnapshots(
@@ -1183,6 +1121,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         if (item.IsFolder)
         {
+            if (!_settings.OpenGroupsFullscreen)
+            {
+                OpenFolderFlyout(item);
+                return;
+            }
+
             _currentFolder = item;
             _currentPage = 0;
             if (string.IsNullOrEmpty(SearchBox.Text))
@@ -1218,6 +1162,42 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             RefreshItems(true);
         else
             SearchBox.Clear();
+    }
+
+    private void OpenFolderFlyout(LauncherItem folder)
+    {
+        _flyoutFolder = folder;
+        FolderFlyoutItems.Clear();
+        foreach (var item in folder.Children)
+        {
+            UpdateDisplayMetrics(item);
+            FolderFlyoutItems.Add(item);
+        }
+
+        var maxWidth = Math.Max(GridCellWidth, PageViewport.ActualWidth * 0.8);
+        var maxHeight = Math.Max(GridCellHeight, PageViewport.ActualHeight * 0.8);
+        var maxColumns = Math.Max(1, (int)Math.Floor(maxWidth / GridCellWidth));
+        var columns = Math.Min(maxColumns, Math.Max(1, (int)Math.Ceiling(Math.Sqrt(FolderFlyoutItems.Count))));
+        var rows = Math.Max(1, (int)Math.Ceiling(FolderFlyoutItems.Count / (double)columns));
+        FolderFlyoutPanel.Width = Math.Min(maxWidth, columns * GridCellWidth + 24);
+        FolderFlyoutPanel.Height = Math.Min(maxHeight, rows * GridCellHeight + 66);
+        FolderFlyoutTitle.Text = $"{folder.Name} · {FolderFlyoutItems.Count}";
+        FolderFlyoutLayer.Visibility = Visibility.Visible;
+    }
+
+    private void CloseFolderFlyout()
+    {
+        FolderFlyoutLayer.Visibility = Visibility.Collapsed;
+        FolderFlyoutItems.Clear();
+        _flyoutFolder = null;
+    }
+
+    private void CloseFolderFlyout_Click(object sender, RoutedEventArgs e) => CloseFolderFlyout();
+
+    private void FolderFlyoutTile_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: LauncherItem item })
+            ActivateItem(item);
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => RefreshItems(true);
@@ -1951,13 +1931,45 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             0,
             Math.Max(0, rows - rowSpan));
 
+        var displacedItems = MoveDisplacedItemsToNextPage(widget, columns, rows);
         widget.WidgetPage = _currentPage;
         widget.WidgetColumn = column;
         widget.WidgetRow = row;
         SaveAndRefresh();
         AnimateTileReflow(oldPositions);
         NavigateToPage(FindPageForItem(widget.Id));
-        ShowToast($"«{widget.Name}» закреплён в новой позиции");
+        ShowToast(displacedItems == 0
+            ? $"«{widget.Name}» закреплён в новой позиции"
+            : $"«{widget.Name}» закреплён: значков перенесено на следующую страницу — {displacedItems}");
+    }
+
+    private int MoveDisplacedItemsToNextPage(LauncherItem widget, int columns, int rows)
+    {
+        var pageItems = GetPageItems(_currentPage);
+        var regularItems = pageItems
+            .Where(item => !item.IsWidget)
+            .OrderBy(item => item.LayoutRow)
+            .ThenBy(item => item.LayoutColumn)
+            .ToList();
+        var occupiedWidgetCells = pageItems
+            .Where(item => item.IsWidget && !ReferenceEquals(item, widget))
+            .Sum(item =>
+            {
+                var (columnSpan, rowSpan) = GridPackingService.GetSpan(item);
+                return columnSpan * rowSpan;
+            });
+        var widgetCells = Math.Max(1, widget.WidgetColumns) * Math.Max(1, widget.WidgetRows);
+        var remainingSlots = Math.Max(0, columns * rows - occupiedWidgetCells - widgetCells);
+        var displacedItems = regularItems
+            .Skip(Math.Min(regularItems.Count, remainingSlots))
+            .ToList();
+
+        foreach (var item in displacedItems)
+            _settings.Items.Remove(item);
+        foreach (var item in displacedItems)
+            _settings.Items.Add(item);
+
+        return displacedItems.Count;
     }
 
     private void Window_DragOver(object sender, DragEventArgs e)
@@ -2407,6 +2419,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             return;
         _settings.HideAfterLaunch = HideAfterLaunchCheckBox.IsChecked == true;
         _settings.AlwaysOnTop = AlwaysOnTopCheckBox.IsChecked == true;
+        _settings.OpenGroupsFullscreen = OpenGroupsFullscreenCheckBox.IsChecked == true;
         Topmost = _settings.AlwaysOnTop;
         UpdatePinButton();
         SaveLayout();

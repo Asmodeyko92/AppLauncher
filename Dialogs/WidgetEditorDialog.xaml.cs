@@ -45,6 +45,7 @@ public partial class WidgetEditorDialog : Window
         _draft = CreateDraft(source);
         DataContext = _draft;
         var darkMode = ApplyOwnerTheme(owner);
+        SetPreviewWidgetSize(owner);
         SourceInitialized += (_, _) => NativeWindowService.ApplyModernWindowStyle(
             new WindowInteropHelper(this).Handle,
             darkMode);
@@ -153,6 +154,21 @@ public partial class WidgetEditorDialog : Window
         var fallbackBrush = (SolidColorBrush)new BrushConverter().ConvertFromString(fallback)!;
         fallbackBrush.Freeze();
         return fallbackBrush;
+    }
+
+    private void SetPreviewWidgetSize(Window owner)
+    {
+        var tileWidth = owner is MainWindow mainWindow ? mainWindow.TileSize : 130d;
+        var tileHeight = owner is MainWindow window ? window.TileHeight : 138d;
+        var spacing = owner is MainWindow launcher
+            ? Math.Max(0, launcher.GridCellWidth - launcher.TileSize)
+            : 12d;
+        var width = _draft.WidgetColumns * tileWidth + (_draft.WidgetColumns - 1) * spacing;
+        var height = _draft.WidgetRows * tileHeight + (_draft.WidgetRows - 1) * spacing;
+
+        PreviewWidgetFrame.Width = width;
+        PreviewWidgetFrame.Height = height;
+        PreviewSizeText.Text = $"{_draft.WidgetRows}×{_draft.WidgetColumns} · {width:0} × {height:0} px";
     }
 
     private void PreviewSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
