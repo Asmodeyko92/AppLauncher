@@ -47,7 +47,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private LauncherItem? _currentFolder;
     private LauncherItem? _pressedItem;
     private LauncherItem? _activeDragItem;
-    private bool _dragCommitted;
     private Guid? _previewTargetId;
     private bool _previewInsertAfter;
     private int _reflowGeneration;
@@ -1312,7 +1311,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (e.IsActive)
         {
             _activeDragItem = e.Item;
-            _dragCommitted = false;
             _previewTargetId = null;
             StartDragGhost(e.Item, Mouse.GetPosition(this));
             return;
@@ -1325,7 +1323,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void WidgetChildGrid_LayoutChanged(object? sender, EventArgs e)
     {
-        _dragCommitted = true;
         SaveLayout();
     }
 
@@ -1362,7 +1359,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _pressedItem = null;
 
         _activeDragItem = dragged;
-        _dragCommitted = false;
         _previewTargetId = null;
         SetDraggedTileOpacity();
         StartDragGhost(dragged, current);
@@ -1868,7 +1864,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             target.WidgetContentType = WidgetContentKind.LauncherGrid;
             widgetSourceCollection.Remove(source);
             target.Children.Add(source);
-            _dragCommitted = true;
             SaveAndRefresh();
             ShowToast($"«{source.Name}» добавлено в виджет «{target.Name}»");
             e.Handled = true;
@@ -1879,7 +1874,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             if (_previewTargetId.HasValue)
             {
-                _dragCommitted = true;
                 SaveLayout();
             }
             e.Handled = true;
@@ -1897,7 +1891,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
             sourceCollection.Remove(source);
             target.Children.Add(source);
-            _dragCommitted = true;
             SaveAndRefresh();
             ShowToast($"«{source.Name}» добавлено в «{target.Name}»");
         }
@@ -1919,7 +1912,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 targetIndex++;
 
             targetCollection.Insert(Math.Clamp(targetIndex, 0, targetCollection.Count), source);
-            _dragCommitted = true;
             SaveAndRefresh();
         }
 
@@ -2002,7 +1994,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (ReferenceEquals(sourceCollection, targetCollection) && sourceIndex < insertionIndex)
             insertionIndex--;
         targetCollection.Insert(Math.Clamp(insertionIndex, 0, targetCollection.Count), source);
-        _dragCommitted = true;
         SaveAndRefresh();
     }
 
@@ -2029,7 +2020,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         widget.WidgetPage = _currentPage;
         widget.WidgetColumn = column;
         widget.WidgetRow = row;
-        _dragCommitted = true;
         SaveAndRefresh();
         AnimateTileReflow(oldPositions);
         NavigateToPage(FindPageForItem(widget.Id));

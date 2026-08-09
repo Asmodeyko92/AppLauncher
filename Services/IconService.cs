@@ -228,33 +228,59 @@ public static class IconService
         var drawing = new DrawingGroup();
         using (var context = drawing.Open())
         {
-            var bodyBrush = new LinearGradientBrush(
-                Color.FromRgb(90, 128, 255),
-                Color.FromRgb(113, 86, 255),
+            var shadowBrush = new SolidColorBrush(Color.FromArgb(70, 8, 10, 18));
+            shadowBrush.Freeze();
+            context.DrawRoundedRectangle(shadowBrush, null, new Rect(7, 25, 52, 34), 9, 9);
+
+            var tabBrush = new LinearGradientBrush(
+                Color.FromRgb(255, 222, 118),
+                Color.FromRgb(247, 173, 45),
                 new Point(0, 0),
-                new Point(1, 1));
-            bodyBrush.Freeze();
+                new Point(0, 1));
+            tabBrush.Freeze();
 
             var tabGeometry = new StreamGeometry();
             using (var geometry = tabGeometry.Open())
             {
-                geometry.BeginFigure(new Point(8, 16), true, true);
-                geometry.LineTo(new Point(25, 16), true, false);
-                geometry.LineTo(new Point(32, 23), true, false);
-                geometry.LineTo(new Point(56, 23), true, false);
-                geometry.LineTo(new Point(56, 31), true, false);
-                geometry.LineTo(new Point(8, 31), true, false);
+                geometry.BeginFigure(new Point(7, 18), true, true);
+                geometry.LineTo(new Point(25, 18), true, false);
+                geometry.LineTo(new Point(32, 24), true, false);
+                geometry.LineTo(new Point(55, 24), true, false);
+                geometry.LineTo(new Point(57, 34), true, false);
+                geometry.LineTo(new Point(7, 34), true, false);
             }
             tabGeometry.Freeze();
-            context.DrawGeometry(bodyBrush, null, tabGeometry);
-            context.DrawRoundedRectangle(bodyBrush, null, new Rect(5, 25, 54, 35), 9, 9);
+            context.DrawGeometry(tabBrush, null, tabGeometry);
 
-            var tileBrush = new SolidColorBrush(Color.FromArgb(225, 255, 255, 255));
-            tileBrush.Freeze();
-            context.DrawRoundedRectangle(tileBrush, null, new Rect(15, 35, 10, 8), 2, 2);
-            context.DrawRoundedRectangle(tileBrush, null, new Rect(30, 35, 10, 8), 2, 2);
-            context.DrawRoundedRectangle(tileBrush, null, new Rect(15, 47, 10, 8), 2, 2);
-            context.DrawRoundedRectangle(tileBrush, null, new Rect(30, 47, 10, 8), 2, 2);
+            var bodyBrush = new LinearGradientBrush(
+                Color.FromRgb(255, 205, 75),
+                Color.FromRgb(242, 151, 30),
+                new Point(0, 0),
+                new Point(0.9, 1));
+            bodyBrush.Freeze();
+            var bodyGeometry = new StreamGeometry();
+            using (var geometry = bodyGeometry.Open())
+            {
+                geometry.BeginFigure(new Point(5, 27), true, true);
+                geometry.LineTo(new Point(59, 27), true, false);
+                geometry.LineTo(new Point(54, 57), true, false);
+                geometry.LineTo(new Point(8, 57), true, false);
+            }
+            bodyGeometry.Freeze();
+            context.DrawGeometry(bodyBrush, null, bodyGeometry);
+
+            var panelBrush = new SolidColorBrush(Color.FromArgb(70, 122, 65, 12));
+            panelBrush.Freeze();
+            context.DrawRoundedRectangle(panelBrush, null, new Rect(15, 36, 33, 12), 4, 4);
+
+            var lineBrush = new SolidColorBrush(Color.FromArgb(210, 255, 248, 220));
+            lineBrush.Freeze();
+            context.DrawRoundedRectangle(lineBrush, null, new Rect(20, 39, 23, 2), 1, 1);
+            context.DrawRoundedRectangle(lineBrush, null, new Rect(20, 43, 17, 2), 1, 1);
+
+            var highlightBrush = new SolidColorBrush(Color.FromArgb(95, 255, 255, 255));
+            highlightBrush.Freeze();
+            context.DrawRoundedRectangle(highlightBrush, null, new Rect(11, 29, 32, 2), 1, 1);
         }
 
         drawing.Freeze();
