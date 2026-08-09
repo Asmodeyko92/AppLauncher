@@ -129,6 +129,8 @@ public partial class WidgetEditorDialog : Window
         Resources["DialogControlBrush"] = GetOwnerBrush(owner, "TileBrush", "#15FFFFFF");
         Resources["DialogHoverBrush"] = GetOwnerBrush(owner, "HoverBrush", "#17FFFFFF");
         Resources["DialogAccentBrush"] = GetOwnerBrush(owner, "AccentSolidBrush", "#6E62FF");
+        Resources["DialogPositiveBrush"] = GetOwnerBrush(owner, "PositiveSolidBrush", "#27B878");
+        Resources["DialogNegativeBrush"] = GetOwnerBrush(owner, "NegativeSolidBrush", "#E25662");
         Resources["AccentSolidBrush"] = GetOwnerBrush(owner, "AccentSolidBrush", "#6E62FF");
         Resources["HoverBrush"] = GetOwnerBrush(owner, "HoverBrush", "#17FFFFFF");
         Resources["AccentBrush"] = owner.Resources["AccentBrush"] ?? GetOwnerBrush(owner, "AccentSolidBrush", "#6E62FF");

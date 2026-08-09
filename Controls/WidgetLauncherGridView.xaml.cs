@@ -54,12 +54,6 @@ public partial class WidgetLauncherGridView : UserControl
     public event EventHandler<LauncherItemDragStateEventArgs>? DragStateChanged;
     public event EventHandler? LayoutChanged;
 
-    private void Root_MouseEnter(object sender, MouseEventArgs e)
-    {
-        if (DataContext is LauncherItem widget && WidgetFolderService.Refresh(widget))
-            LayoutChanged?.Invoke(this, EventArgs.Empty);
-    }
-
     private void FolderBack_Click(object sender, RoutedEventArgs e)
     {
         _folderStack.Pop();

@@ -154,7 +154,7 @@
         </DataTemplate>
     </UserControl.Resources>
 
-    <Grid ClipToBounds="True" DragOver="Root_DragOver" Drop="Root_Drop" MouseEnter="Root_MouseEnter">
+    <Grid ClipToBounds="True" DragOver="Root_DragOver" Drop="Root_Drop">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>

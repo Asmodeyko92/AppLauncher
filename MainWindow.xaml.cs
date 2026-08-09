@@ -303,7 +303,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void RefreshItems(bool resetPage = false)
     {
-        RefreshWidgetFolderSources(_settings.Items);
         UpdateFolderMembership(_settings.Items, false);
         _availableItems.Clear();
         var query = SearchBox?.Text.Trim() ?? string.Empty;
@@ -345,17 +344,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (resetPage)
             _currentPage = 0;
         RecalculatePagination(!resetPage);
-    }
-
-    private static void RefreshWidgetFolderSources(IEnumerable<LauncherItem> items)
-    {
-        foreach (var item in items)
-        {
-            if (item.IsWidget)
-                WidgetFolderService.Refresh(item);
-            if (item.IsFolder)
-                RefreshWidgetFolderSources(item.Children);
-        }
     }
 
     private void RecalculatePagination(bool preserveAnchor)
