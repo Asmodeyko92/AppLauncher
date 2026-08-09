@@ -1,0 +1,143 @@
+<Window x:Class="AppLauncher.Dialogs.WidgetSizePickerDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Размер виджета" Width="720" Height="590" MinWidth="560" MinHeight="500"
+        WindowStyle="None" ResizeMode="NoResize" WindowStartupLocation="CenterOwner"
+        AllowsTransparency="False" Background="{DynamicResource PickerSurfaceBrush}"
+        UseLayoutRounding="True" SnapsToDevicePixels="True" ShowInTaskbar="False"
+        TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType"
+        Opacity="0">
+    <Window.Resources>
+        <SolidColorBrush x:Key="PickerSurfaceBrush" Color="#FF181B24"/>
+        <SolidColorBrush x:Key="PickerCardBrush" Color="#FF20232D"/>
+        <SolidColorBrush x:Key="PickerTextBrush" Color="#FFFFFFFF"/>
+        <SolidColorBrush x:Key="PickerMutedBrush" Color="#A8FFFFFF"/>
+        <SolidColorBrush x:Key="PickerBorderBrush" Color="#30FFFFFF"/>
+        <SolidColorBrush x:Key="PickerCellBrush" Color="#0FFFFFFF"/>
+        <SolidColorBrush x:Key="PickerCellHoverBrush" Color="#227569FF"/>
+        <SolidColorBrush x:Key="PickerSelectedBrush" Color="#CC6E62FF"/>
+        <SolidColorBrush x:Key="PickerSelectedBorderBrush" Color="#FFE1DEFF"/>
+        <SolidColorBrush x:Key="PickerAccentBrush" Color="#FF6E62FF"/>
+
+        <Style x:Key="PickerButton" TargetType="Button">
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="MinWidth" Value="112"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Foreground" Value="{DynamicResource PickerTextBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource PickerCardBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource PickerBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="9" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource PickerAccentBrush}"/>
+                                <Setter TargetName="Surface" Property="Opacity" Value="0.86"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.58"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.38"/><Setter Property="Cursor" Value="Arrow"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PickerIconButton" TargetType="Button" BasedOn="{StaticResource PickerButton}">
+            <Setter Property="Width" Value="38"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="MinWidth" Value="38"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="{DynamicResource PickerSurfaceBrush}" BorderBrush="{DynamicResource PickerBorderBrush}"
+            BorderThickness="1" CornerRadius="11" Padding="22">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="58"/>
+                <RowDefinition Height="76"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="64"/>
+            </Grid.RowDefinitions>
+
+            <Grid MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Размер нового виджета" Foreground="{DynamicResource PickerTextBrush}"
+                               FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="22" FontWeight="SemiBold"/>
+                    <TextBlock Text="Зажмите левую кнопку и выделите нужную область сетки"
+                               Foreground="{DynamicResource PickerMutedBrush}" FontSize="11.5" Margin="0,4,0,0"/>
+                </StackPanel>
+                <Button Grid.Column="1" Style="{StaticResource PickerIconButton}" Content="&#xE8BB;"
+                        ToolTip="Закрыть" Click="Cancel_Click"/>
+            </Grid>
+
+            <Border Grid.Row="1" Margin="0,8,0,10" Padding="15,10" CornerRadius="10"
+                    Background="{DynamicResource PickerCardBrush}" BorderBrush="{DynamicResource PickerBorderBrush}" BorderThickness="1">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Выбранная область" Foreground="{DynamicResource PickerMutedBrush}" FontSize="10.5"/>
+                        <TextBlock x:Name="SelectionHintText" Text="Проведите курсором по плиткам"
+                                   Foreground="{DynamicResource PickerTextBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <StackPanel Margin="0,0,18,0">
+                            <TextBlock Text="РЯДЫ" Foreground="{DynamicResource PickerMutedBrush}" FontSize="9.5" HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="SelectedRowsText" Text="—" Foreground="{DynamicResource PickerTextBrush}"
+                                       FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Text="×" Foreground="{DynamicResource PickerMutedBrush}" FontSize="18" VerticalAlignment="Center" Margin="0,8,18,0"/>
+                        <StackPanel>
+                            <TextBlock Text="СТОЛБЦЫ" Foreground="{DynamicResource PickerMutedBrush}" FontSize="9.5" HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="SelectedColumnsText" Text="—" Foreground="{DynamicResource PickerTextBrush}"
+                                       FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2" Background="#08000000" BorderBrush="{DynamicResource PickerBorderBrush}"
+                    BorderThickness="1" CornerRadius="11" Padding="14" ClipToBounds="True">
+                <Grid>
+                    <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Grid x:Name="SelectionGrid" Background="Transparent" Cursor="Cross"
+                              MouseLeftButtonDown="SelectionGrid_MouseLeftButtonDown"
+                              MouseMove="SelectionGrid_MouseMove"
+                              MouseLeftButtonUp="SelectionGrid_MouseLeftButtonUp"
+                              LostMouseCapture="SelectionGrid_LostMouseCapture"/>
+                    </Viewbox>
+                    <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="3"
+                            Background="#AA171A22" BorderBrush="#25FFFFFF" BorderThickness="1"
+                            CornerRadius="8" Padding="9,5" IsHitTestVisible="False">
+                        <TextBlock x:Name="AvailableGridText" Foreground="{DynamicResource PickerMutedBrush}" FontSize="10"/>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="3">
+                <TextBlock Text="Размер зависит от текущего окна и настроек плиток"
+                           Foreground="{DynamicResource PickerMutedBrush}" FontSize="10.5"
+                           VerticalAlignment="Center" TextWrapping="Wrap" Margin="2,0,250,0"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Content="Отмена" Style="{StaticResource PickerButton}" Margin="0,0,9,0" Click="Cancel_Click"/>
+                    <Button x:Name="CreateButton" Content="Создать" Style="{StaticResource PickerButton}"
+                            Background="{DynamicResource PickerAccentBrush}" BorderBrush="Transparent"
+                            IsEnabled="False" IsDefault="True" Click="Create_Click"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

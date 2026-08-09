@@ -1,0 +1,54 @@
+<UserControl x:Class="AppLauncher.Controls.WebWidgetView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+             IsHitTestVisible="False" Focusable="False"
+             UseLayoutRounding="True" SnapsToDevicePixels="True">
+    <Grid x:Name="Root" ClipToBounds="True">
+        <Grid x:Name="BrowserLayer">
+            <wv2:WebView2 x:Name="Browser"
+                          HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                          IsHitTestVisible="False" Focusable="False"/>
+        </Grid>
+        <Grid x:Name="LocalContentLayer" RenderTransformOrigin="0.5,0.5" IsHitTestVisible="False">
+            <Grid.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform ScaleX="{Binding WidgetScale}" ScaleY="{Binding WidgetScale}"/>
+                    <TranslateTransform X="{Binding WidgetOffsetX}" Y="{Binding WidgetOffsetY}"/>
+                </TransformGroup>
+            </Grid.RenderTransform>
+            <Image x:Name="LocalImage" Visibility="Collapsed" Stretch="UniformToFill"
+                   IsHitTestVisible="False" SnapsToDevicePixels="True"
+                   RenderOptions.BitmapScalingMode="HighQuality"/>
+            <Border x:Name="LocalTextSurface" Visibility="Collapsed" Background="Transparent"
+                    Padding="13,12" IsHitTestVisible="False">
+                <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                    <TextBlock x:Name="LocalTextBlock" Foreground="{DynamicResource TextBrush}"
+                               FontFamily="Cascadia Mono, Consolas, Segoe UI" FontSize="11.5"
+                               LineHeight="17" TextWrapping="Wrap"/>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+        <Image x:Name="SnapshotImage" Visibility="Collapsed" Stretch="Fill"
+               IsHitTestVisible="False" SnapsToDevicePixels="True"
+               RenderTransformOrigin="0.5,0.5" RenderOptions.BitmapScalingMode="HighQuality">
+            <Image.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform x:Name="SnapshotScaleTransform"/>
+                    <TranslateTransform x:Name="SnapshotOffsetTransform"/>
+                </TransformGroup>
+            </Image.RenderTransform>
+        </Image>
+        <Border x:Name="StatusSurface" Background="#B8171A22" Visibility="Collapsed">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="14">
+                <TextBlock x:Name="StatusGlyph" Text="&#xE774;"
+                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="23"
+                           Foreground="#FF7569FF" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="StatusText" Text="Загрузка страницы…" Margin="0,8,0,0"
+                           Foreground="White" FontFamily="Segoe UI Variable Text, Segoe UI"
+                           FontSize="11" TextAlignment="Center" TextWrapping="Wrap"
+                           MaxWidth="240"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

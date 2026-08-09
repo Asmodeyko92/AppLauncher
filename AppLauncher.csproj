@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- Автоматические импорты WinForms здесь отключены намеренно: иначе они
+         конфликтуют с одноимёнными WPF-типами Point, Size и EventArgs. -->
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>AppLauncher</AssemblyName>
+    <RootNamespace>AppLauncher</RootNamespace>
+    <ApplicationIcon>Assets\AppLauncher.ico</ApplicationIcon>
+    <Version>1.9.0</Version>
+    <Company>Serhii</Company>
+    <Product>AppLauncher</Product>
+    <Description>Современный безрамочный лаунчер приложений для Windows.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4078.44" />
+  </ItemGroup>
+</Project>

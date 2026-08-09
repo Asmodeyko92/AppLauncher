@@ -1,0 +1,224 @@
+<UserControl x:Class="AppLauncher.Controls.WidgetLauncherGridView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:AppLauncher.Converters"
+             xmlns:controls="clr-namespace:AppLauncher.Controls"
+             UseLayoutRounding="True" SnapsToDevicePixels="True"
+             Focusable="False" AllowDrop="True">
+    <UserControl.Resources>
+        <conv:LauncherIconConverter x:Key="InnerLauncherIconConverter"/>
+
+        <Style x:Key="InnerTileButton" TargetType="Button">
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="Background" Value="#0EFFFFFF"/>
+            <Setter Property="BorderBrush" Value="#1FFFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="ToolTip" Value="{Binding ToolTipText}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource HoverBrush}"/>
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource AccentSolidBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.62"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="InnerRemoveButton" TargetType="Button">
+            <Setter Property="Width" Value="19"/><Setter Property="Height" Value="19"/>
+            <Setter Property="Padding" Value="0"/><Setter Property="Background" Value="#CC20232D"/>
+            <Setter Property="Foreground" Value="#FFFF7184"/><Setter Property="BorderBrush" Value="#32FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/><Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/><Setter Property="FontSize" Value="9"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#4DFF6076"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="WidgetContentScrollViewer" TargetType="ScrollViewer">
+            <Setter Property="VerticalScrollBarVisibility" Value="Hidden"/>
+            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+            <Setter Property="PanningMode" Value="VerticalOnly"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="InnerItemsStyle" TargetType="ItemsControl">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="ItemsPanel">
+                <Setter.Value><ItemsPanelTemplate><WrapPanel IsItemsHost="True"/></ItemsPanelTemplate></Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding WidgetDisplayMode}" Value="List">
+                    <Setter Property="ItemsPanel">
+                        <Setter.Value><ItemsPanelTemplate><StackPanel IsItemsHost="True"/></ItemsPanelTemplate></Setter.Value>
+                    </Setter>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="InnerDisplayButton" TargetType="Button" BasedOn="{StaticResource InnerTileButton}">
+            <Setter Property="Width" Value="{Binding DataContext.WidgetInnerTileWidth, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+            <Setter Property="Height" Value="{Binding DataContext.WidgetInnerTileHeight, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding DataContext.WidgetDisplayMode, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Value="List">
+                    <Setter Property="Width" Value="Auto"/>
+                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                    <Setter Property="Margin" Value="4,2"/>
+                    <Setter Property="Padding" Value="8,4"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding DataContext.WidgetDisplayMode, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Value="Tiles">
+                    <Setter Property="Padding" Value="9,6"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- В памяти существует только выбранный вариант разметки. Раньше WPF
+             создавал для каждого ярлыка сразу три дерева (значок/список/плитка)
+             и лишь скрывал два из них, что особенно тормозило смену страниц. -->
+        <DataTemplate x:Key="IconsContentTemplate">
+            <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="22"/></Grid.RowDefinitions>
+                <Image Source="{Binding Converter={StaticResource InnerLauncherIconConverter}}"
+                       Width="{Binding DataContext.WidgetInnerIconSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                       Height="{Binding DataContext.WidgetInnerIconSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                       Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       SnapsToDevicePixels="True" RenderOptions.BitmapScalingMode="HighQuality"/>
+                <TextBlock Grid.Row="1" Text="{Binding Name}" Foreground="{DynamicResource TextBrush}"
+                           FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="9.5" FontWeight="SemiBold"
+                           TextAlignment="Center" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="ListContentTemplate">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Image Source="{Binding Converter={StaticResource InnerLauncherIconConverter}}"
+                       Width="{Binding DataContext.WidgetInnerIconSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                       Height="{Binding DataContext.WidgetInnerIconSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                       Stretch="Uniform" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+                <StackPanel Grid.Column="1" Margin="11,0,24,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextBrush}"
+                               FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="11" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Path}" Foreground="{DynamicResource MutedTextBrush}"
+                               FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="8.5"
+                               TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="TilesContentTemplate">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Border Width="{Binding DataContext.WidgetInnerIconSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                        Height="{Binding DataContext.WidgetInnerIconSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                        CornerRadius="8" Background="#0CFFFFFF">
+                    <Image Source="{Binding Converter={StaticResource InnerLauncherIconConverter}}"
+                           Margin="4" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+                </Border>
+                <StackPanel Grid.Column="1" Margin="10,0,20,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextBrush}"
+                               FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="10.5" FontWeight="SemiBold"
+                               TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="32"/>
+                    <TextBlock Text="Открыть" Foreground="{DynamicResource MutedTextBrush}"
+                               FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="8.5" Margin="0,3,0,0"/>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid ClipToBounds="True" DragOver="Root_DragOver" Drop="Root_Drop" MouseEnter="Root_MouseEnter">
+        <ScrollViewer Style="{StaticResource WidgetContentScrollViewer}">
+            <ItemsControl x:Name="InnerItems" ItemsSource="{Binding Children}" Style="{StaticResource InnerItemsStyle}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Style="{StaticResource InnerDisplayButton}"
+                                Click="Child_Click"
+                                PreviewMouseLeftButtonDown="Child_PreviewMouseLeftButtonDown"
+                                PreviewMouseMove="Child_PreviewMouseMove"
+                                DragOver="Child_DragOver" Drop="Child_Drop">
+                            <Grid>
+                                <ContentControl Content="{Binding}">
+                                    <ContentControl.Style>
+                                        <Style TargetType="ContentControl">
+                                            <Setter Property="ContentTemplate" Value="{StaticResource IconsContentTemplate}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DataContext.WidgetDisplayMode, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Value="List">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource ListContentTemplate}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding DataContext.WidgetDisplayMode, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Value="Tiles">
+                                                    <Setter Property="ContentTemplate" Value="{StaticResource TilesContentTemplate}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ContentControl.Style>
+                                </ContentControl>
+
+                                <Button Content="&#xE8BB;"
+                                        HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-2,-2,0"
+                                        ToolTip="Убрать из виджета" Click="RemoveChild_Click">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource InnerRemoveButton}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding IsEditing, RelativeSource={RelativeSource AncestorType=controls:WidgetLauncherGridView}}" Value="True"/>
+                                                        <Condition Binding="{Binding DataContext.CanEditWidgetChildren, RelativeSource={RelativeSource AncestorType=controls:WidgetLauncherGridView}}" Value="True"/>
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </Grid>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
+            <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Children.Count}" Value="0"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Style>
+            <TextBlock Text="&#xE8FD;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                       Foreground="{DynamicResource AccentSolidBrush}" FontSize="22" HorizontalAlignment="Center"/>
+            <TextBlock Text="Добавьте значки или выберите папку" Foreground="{DynamicResource TextBrush}" FontSize="10.5"
+                       FontWeight="SemiBold" Margin="0,5,0,0" HorizontalAlignment="Center"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

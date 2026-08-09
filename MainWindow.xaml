@@ -1,0 +1,983 @@
+<Window x:Class="AppLauncher.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="clr-namespace:AppLauncher.Converters"
+        xmlns:controls="clr-namespace:AppLauncher.Controls"
+        Title="AppLauncher"
+        Width="1000" Height="700" MinWidth="760" MinHeight="500"
+        WindowStyle="None" ResizeMode="NoResize"
+        AllowsTransparency="False" Background="#11131A"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType"
+        TextOptions.TextHintingMode="Fixed"
+        WindowStartupLocation="Manual" AllowDrop="True"
+        KeyDown="Window_KeyDown" PreviewKeyDown="Window_PreviewKeyDown"
+        Activated="Window_Activated" Deactivated="Window_Deactivated"
+        Closing="Window_Closing"
+        PreviewMouseWheel="Window_PreviewMouseWheel"
+        PreviewDragOver="Window_PreviewDragOver"
+        PreviewDragLeave="Window_PreviewDragLeave"
+        DragOver="Window_DragOver" Drop="Window_Drop">
+    <Window.Resources>
+        <conv:LauncherIconConverter x:Key="LauncherIconConverter"/>
+        <conv:HexColorBrushConverter x:Key="HexColorBrushConverter"/>
+
+        <!-- Безопасные части визуала группы: без ContentControl и циклов логического дерева. -->
+        <Style x:Key="LauncherSingleIconStyle" TargetType="Image">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Setter Property="Stretch" Value="Uniform"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="RenderOptions.BitmapScalingMode" Value="HighQuality"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsWidget}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsFolder}" Value="True"/>
+                        <Condition Binding="{Binding UseFolderThumbnails, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                        <Condition Binding="{Binding HasFolderThumbnails}" Value="True"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="FolderThumbnailControlStyle" TargetType="ItemsControl">
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Style.Triggers>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsFolder}" Value="True"/>
+                        <Condition Binding="{Binding UseFolderThumbnails, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                        <Condition Binding="{Binding HasFolderThumbnails}" Value="True"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Visibility" Value="Visible"/>
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <DataTemplate x:Key="FolderThumbnailItemTemplate">
+            <Grid Margin="2.5">
+                <Image Source="{Binding Converter={StaticResource LauncherIconConverter}}"
+                       Width="{Binding FolderThumbnailSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                       Height="{Binding FolderThumbnailSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                       Stretch="Uniform" SnapsToDevicePixels="True"
+                       RenderOptions.BitmapScalingMode="HighQuality"/>
+            </Grid>
+        </DataTemplate>
+
+        <Style x:Key="ModernScrollThumb" TargetType="Thumb">
+            <Setter Property="MinHeight" Value="38"/>
+            <Setter Property="Margin" Value="2,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border x:Name="ThumbSurface" Background="{DynamicResource ScrollThumbBrush}" CornerRadius="3"/>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ThumbSurface" Property="Background" Value="{DynamicResource ScrollThumbHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="ThumbSurface" Property="Background" Value="{DynamicResource AccentSolidBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ScrollBar">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Width="8" Background="Transparent">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static ScrollBar.PageUpCommand}" Opacity="0" Focusable="False"/>
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource ModernScrollThumb}"/>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static ScrollBar.PageDownCommand}" Opacity="0" Focusable="False"/>
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="TileButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="9"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="0"/></Setter.Value></Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface" Background="{DynamicResource LauncherTileBrush}"
+                                BorderBrush="{DynamicResource TileBorderBrush}" BorderThickness="1"
+                                CornerRadius="11" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource LauncherTileHoverBrush}"/>
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource AccentSolidBrush}"/>
+                                <Setter Property="Panel.ZIndex" Value="2"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.66"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsWidget}" Value="True">
+                    <Setter Property="Cursor" Value="Arrow"/>
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsWidget}" Value="True"/>
+                        <Condition Binding="{Binding HasWidgetClickAction}" Value="True"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Cursor" Value="Hand"/>
+                </MultiDataTrigger>
+                <EventTrigger RoutedEvent="MouseEnter">
+                    <BeginStoryboard><Storyboard>
+                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" To="-2" Duration="0:0:0.12"/>
+                    </Storyboard></BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="MouseLeave">
+                    <BeginStoryboard><Storyboard>
+                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" To="0" Duration="0:0:0.15"/>
+                    </Storyboard></BeginStoryboard>
+                </EventTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ModernContextMenu" TargetType="ContextMenu">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+            <Setter Property="HasDropShadow" Value="False"/>
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContextMenu">
+                        <Grid Margin="9" Background="Transparent">
+                            <Border Background="#01000000" CornerRadius="10">
+                                <Border.Effect><DropShadowEffect Color="#080A12" BlurRadius="20" ShadowDepth="4" Opacity="0.40"/></Border.Effect>
+                            </Border>
+                            <Border Background="{DynamicResource PanelBrush}"
+                                    BorderBrush="{DynamicResource WindowBorderBrush}" BorderThickness="1"
+                                    CornerRadius="10" Padding="6" SnapsToDevicePixels="True">
+                                <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ModernMenuItem" TargetType="MenuItem">
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="MinWidth" Value="228"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border x:Name="ItemSurface" Background="Transparent" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <Grid>
+                                <ContentPresenter ContentSource="Header" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="CheckMark" Text="&#xE73E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           Foreground="{DynamicResource AccentSolidBrush}" FontSize="13"
+                                           HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="Collapsed"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="ItemSurface" Property="Background" Value="{DynamicResource HoverBrush}"/></Trigger>
+                            <Trigger Property="IsChecked" Value="True"><Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.36"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ApplicationMenuItem" TargetType="MenuItem" BasedOn="{StaticResource ModernMenuItem}">
+            <Style.Triggers><DataTrigger Binding="{Binding IsApplication}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="InFolderMenuItem" TargetType="MenuItem" BasedOn="{StaticResource ModernMenuItem}">
+            <Style.Triggers><DataTrigger Binding="{Binding IsInFolder}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="CustomIconMenuItem" TargetType="MenuItem" BasedOn="{StaticResource ModernMenuItem}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasCustomIcon}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                <DataTrigger Binding="{Binding IsWidget}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="WidgetMenuItem" TargetType="MenuItem" BasedOn="{StaticResource ModernMenuItem}">
+            <Style.Triggers><DataTrigger Binding="{Binding IsWidget}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="LauncherContentStyle" TargetType="Grid">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers><DataTrigger Binding="{Binding IsWidget}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="LauncherLabelStyle" TargetType="TextBlock">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers><DataTrigger Binding="{Binding IsWidget}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="WidgetSurfaceStyle" TargetType="Border">
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource TileBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="9"/>
+            <Style.Triggers><DataTrigger Binding="{Binding IsWidget}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="WidgetExtendedPanelStyle" TargetType="StackPanel">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasWidgetContent}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                <DataTrigger Binding="{Binding IsWidgetLauncherGrid}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="WidgetExtendedTextStyle" TargetType="TextBlock">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding WidgetRows}" Value="1"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                <DataTrigger Binding="{Binding HasWidgetContent}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                <DataTrigger Binding="{Binding IsWidgetLauncherGrid}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="WidgetWebViewStyle" TargetType="controls:WebWidgetView">
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Style.Triggers><DataTrigger Binding="{Binding HasWidgetDocumentContent}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="WidgetLauncherGridStyle" TargetType="controls:WidgetLauncherGridView">
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Setter Property="Margin" Value="6"/>
+            <Setter Property="Opacity" Value="{Binding WidgetContentOpacity}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsWidgetLauncherGrid}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                <DataTrigger Binding="{Binding WidgetShowTitle}" Value="True"><Setter Property="Margin" Value="6,38,6,6"/></DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Ленивые шаблоны плитки. Обычный ярлык больше не создаёт внутри себя
+             WebView2 и сетку виджета, даже если они скрыты стилем. -->
+        <DataTemplate x:Key="StandardTileContentTemplate">
+            <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="36"/></Grid.RowDefinitions>
+                <Grid Width="{Binding IconPlateSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                      Height="{Binding IconPlateSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                      HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Image Style="{StaticResource LauncherSingleIconStyle}"
+                           Source="{Binding Converter={StaticResource LauncherIconConverter}}"
+                           Width="{Binding IconSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                           Height="{Binding IconSize, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                    <ItemsControl Style="{StaticResource FolderThumbnailControlStyle}"
+                                  ItemsSource="{Binding FolderThumbnailItems}"
+                                  ItemTemplate="{StaticResource FolderThumbnailItemTemplate}"
+                                  Width="{Binding IconPlateSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  Height="{Binding IconPlateSize, RelativeSource={RelativeSource AncestorType=Window}}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><UniformGrid Rows="2" Columns="2"/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </Grid>
+                <TextBlock Grid.Row="1" Text="{Binding Name}" Foreground="{DynamicResource TextBrush}"
+                           FontFamily="{StaticResource UiFont}" FontSize="12" FontWeight="SemiBold"
+                           TextAlignment="Center" TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" Margin="2,0"/>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="WidgetTileContentTemplate">
+            <Border Style="{StaticResource WidgetSurfaceStyle}" Margin="1"
+                    Background="{Binding WidgetBackgroundColor, Converter={StaticResource HexColorBrushConverter}}">
+                <Grid ClipToBounds="True">
+                    <controls:WebWidgetView Style="{StaticResource WidgetWebViewStyle}" Margin="1"/>
+                    <controls:WidgetLauncherGridView Style="{StaticResource WidgetLauncherGridStyle}"
+                                                     ItemInvoked="WidgetChildGrid_ItemInvoked"
+                                                     DragStateChanged="WidgetChildGrid_DragStateChanged"
+                                                     LayoutChanged="WidgetChildGrid_LayoutChanged"/>
+                    <Grid Margin="11,9">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <Border Style="{DynamicResource WidgetHeaderSurfaceStyle}" Background="#B8171A22"
+                                CornerRadius="6" Padding="7,5" Margin="-4,-3,-4,0">
+                            <Grid>
+                                <TextBlock Text="{Binding Name}" Foreground="White"
+                                           FontFamily="{StaticResource UiFont}" FontSize="12" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" Margin="0,0,42,0"/>
+                                <Border HorizontalAlignment="Right" Padding="6,2" CornerRadius="5" Background="#32FFFFFF">
+                                    <TextBlock Text="{Binding WidgetSizeText}" Foreground="White"
+                                               FontFamily="{StaticResource UiFont}" FontSize="9.5"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+                        <StackPanel Grid.Row="1" Style="{StaticResource WidgetExtendedPanelStyle}"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE950;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       Foreground="{DynamicResource AccentSolidBrush}" FontSize="25" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Пустой виджет" Margin="0,5,0,0" Foreground="{DynamicResource TextBrush}"
+                                       FontFamily="{StaticResource UiFont}" FontSize="11" FontWeight="SemiBold"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="2" Style="{StaticResource WidgetExtendedTextStyle}"
+                                   Text="Откройте контекстное меню → Редактировать"
+                                   Foreground="{DynamicResource MutedTextBrush}" FontFamily="{StaticResource UiFont}"
+                                   FontSize="9.5" TextTrimming="CharacterEllipsis"/>
+                    </Grid>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <Style x:Key="WidgetHeaderSurfaceStyle" TargetType="Border">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers><DataTrigger Binding="{Binding WidgetShowTitle}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="WidgetDragGlyphStyle" TargetType="TextBlock">
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Style.Triggers><DataTrigger Binding="{Binding IsWidget}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+        </Style>
+        <Style x:Key="DragHandleSurface" TargetType="Border">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="46"/>
+            <Setter Property="CornerRadius" Value="9"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="SizeAll"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource AccentSolidBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="SettingsCard" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource TileBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource TileBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="15"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+        <Style x:Key="SettingsSectionTitle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,14"/>
+        </Style>
+        <Style x:Key="SettingsValueText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="ColorChoiceButton" TargetType="Button" BasedOn="{StaticResource SecondaryActionButton}">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="MinWidth" Value="118"/>
+            <Setter Property="Padding" Value="10,0"/>
+        </Style>
+        <Style x:Key="SettingsSubsectionTitle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,2,0,12"/>
+        </Style>
+        <Style x:Key="SettingsCategoryExpander" TargetType="Expander">
+            <Setter Property="Margin" Value="0,0,0,10"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <Border Background="{DynamicResource TileBrush}" BorderBrush="{DynamicResource TileBorderBrush}"
+                                BorderThickness="1" CornerRadius="10" ClipToBounds="True">
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                <ToggleButton x:Name="HeaderButton" Grid.Row="0" Height="58" Padding="14,0"
+                                              Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                              IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                              Content="{TemplateBinding Header}">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border x:Name="HeaderSurface" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}">
+                                                <Grid>
+                                                    <ContentPresenter Margin="0,0,36,0" VerticalAlignment="Center"/>
+                                                    <TextBlock x:Name="Chevron" Text="&#xE70D;" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                               Foreground="{DynamicResource MutedTextBrush}"
+                                                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13"/>
+                                                </Grid>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="HeaderSurface" Property="Background" Value="{DynamicResource HoverBrush}"/>
+                                                </Trigger>
+                                                <Trigger Property="IsChecked" Value="True">
+                                                    <Setter TargetName="Chevron" Property="Text" Value="&#xE70E;"/>
+                                                    <Setter TargetName="HeaderSurface" Property="Background" Value="{DynamicResource HoverBrush}"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                </ToggleButton>
+                                <ContentPresenter x:Name="ExpandSite" Grid.Row="1" Margin="15,3,15,16"
+                                                  Visibility="Collapsed" ContentSource="Content"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="True"><Setter TargetName="ExpandSite" Property="Visibility" Value="Visible"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="PageArrowButton" TargetType="Button" BasedOn="{StaticResource ChromeButton}">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+        <Style x:Key="PageDotButton" TargetType="Button">
+            <Setter Property="Width" Value="7"/>
+            <Setter Property="Height" Value="7"/>
+            <Setter Property="Margin" Value="3,0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="{DynamicResource MutedTextBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Opacity" Value="0.52"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Dot" Background="{TemplateBinding Background}" CornerRadius="4"/>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Opacity" Value="0.9"/></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="Dot" Property="Opacity" Value="0.55"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="Separator">
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Separator"><Border Height="1" Margin="10,5" Background="{DynamicResource TileBorderBrush}"/></ControlTemplate></Setter.Value></Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border x:Name="RootBorder" Margin="0" Background="{DynamicResource WindowBrush}"
+            BorderBrush="{DynamicResource WindowBorderBrush}" BorderThickness="1" CornerRadius="10">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="68"/>
+                <RowDefinition Height="52"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Единая компактная командная строка -->
+            <Grid Grid.Row="0" Margin="18,10,16,8" Background="Transparent" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="46"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="44"/>
+                    <ColumnDefinition Width="48"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource DragHandleSurface}" ToolTip="Перетащить окно">
+                    <Grid Width="10" Height="18" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Ellipse Width="3" Height="3" Fill="{DynamicResource MutedTextBrush}" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                        <Ellipse Width="3" Height="3" Fill="{DynamicResource MutedTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Top"/>
+                        <Ellipse Width="3" Height="3" Fill="{DynamicResource MutedTextBrush}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        <Ellipse Width="3" Height="3" Fill="{DynamicResource MutedTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        <Ellipse Width="3" Height="3" Fill="{DynamicResource MutedTextBrush}" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
+                        <Ellipse Width="3" Height="3" Fill="{DynamicResource MutedTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="1" Height="46" CornerRadius="10"
+                        Background="{DynamicResource SearchBrush}" BorderBrush="{DynamicResource TileBorderBrush}" BorderThickness="1">
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="44"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <TextBlock Text="&#xE721;" Foreground="{DynamicResource MutedTextBrush}"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <TextBox x:Name="SearchBox" Grid.Column="1" Margin="0,0,12,0" Background="Transparent" BorderThickness="0"
+                                 Foreground="{DynamicResource TextBrush}" CaretBrush="{DynamicResource TextBrush}"
+                                 FontFamily="{StaticResource UiFont}" FontSize="14" VerticalContentAlignment="Center"/>
+                        <TextBlock x:Name="SearchPlaceholder" Grid.Column="1" Text="Найти приложение…"
+                                   Foreground="{DynamicResource MutedTextBrush}" IsHitTestVisible="False"
+                                   VerticalAlignment="Center" FontFamily="{StaticResource UiFont}" FontSize="14"/>
+                    </Grid>
+                </Border>
+                <Button x:Name="PinButton" Grid.Column="2" Width="40" Height="40" Margin="4,0,0,0"
+                        Style="{StaticResource ChromeButton}" Content="&#xE718;"
+                        ToolTip="Закрепить окно" Click="PinButton_Click"/>
+                <Button Grid.Column="3" Width="42" Height="42" Margin="4,0,0,0"
+                        Style="{StaticResource CloseChromeButton}" Content="&#xE8BB;"
+                        ToolTip="Скрыть AppLauncher в трей" Click="CloseButton_Click"/>
+            </Grid>
+
+            <!-- Навигация -->
+            <Grid Grid.Row="1" Margin="26,0,26,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <Button x:Name="BackButton" Width="38" Height="38" Margin="0,0,8,0" Visibility="Collapsed"
+                        Style="{StaticResource ChromeButton}" Content="&#xE72B;" ToolTip="Назад" Click="BackButton_Click"/>
+                <TextBlock x:Name="SectionTitle" Grid.Column="1" Text="Все приложения"
+                           Foreground="{DynamicResource TextBrush}" FontFamily="{StaticResource DisplayFont}"
+                           FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <Border Grid.Column="2" Padding="9,4" CornerRadius="8" Background="{DynamicResource CounterBrush}" VerticalAlignment="Center">
+                    <TextBlock x:Name="ItemCountText" Foreground="{DynamicResource MutedTextBrush}" FontFamily="{StaticResource UiFont}" FontSize="10.5"/>
+                </Border>
+            </Grid>
+
+            <!-- Сетка -->
+            <Grid Grid.Row="2" Margin="18,0,18,14">
+                <Grid x:Name="PageViewport" Margin="0,5,0,70" ClipToBounds="True"
+                      SizeChanged="PageViewport_SizeChanged">
+                    <ItemsControl x:Name="LauncherItems" ItemsSource="{Binding DisplayItems}" AllowDrop="True" Panel.ZIndex="1"
+                                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                  Drop="ItemsArea_Drop" DragOver="ItemsArea_DragOver">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <controls:WidgetGridPanel IsItemsHost="True" ClipToBounds="True"
+                                                          CellWidth="{Binding GridCellWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          CellHeight="{Binding GridCellHeight, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource TileButtonStyle}"
+                                        Width="{Binding DisplayWidth}"
+                                        Height="{Binding DisplayHeight}"
+                                        Margin="{Binding TileMargin, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        Effect="{Binding TileShadowEffect, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        ToolTip="{Binding ToolTipText}" Click="Tile_Click"
+                                        PreviewMouseLeftButtonDown="Tile_PreviewMouseLeftButtonDown"
+                                        PreviewMouseMove="Tile_PreviewMouseMove" DragOver="Tile_DragOver" Drop="Tile_Drop">
+                                    <Button.ContextMenu>
+                                        <ContextMenu Style="{StaticResource ModernContextMenu}"
+                                                     DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                            <MenuItem Style="{StaticResource ApplicationMenuItem}" Click="OpenContextItem_Click">
+                                                <MenuItem.Header><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE768;" Width="27" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"/><TextBlock Text="Открыть"/></StackPanel></MenuItem.Header>
+                                            </MenuItem>
+                                            <MenuItem Style="{StaticResource WidgetMenuItem}" Click="EditWidget_Click">
+                                                <MenuItem.Header><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE70F;" Width="27" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"/><TextBlock Text="Редактировать виджет"/></StackPanel></MenuItem.Header>
+                                            </MenuItem>
+                                            <MenuItem Style="{StaticResource ModernMenuItem}" Click="RenameItem_Click">
+                                                <MenuItem.Header><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE70F;" Width="27" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"/><TextBlock Text="Переименовать"/></StackPanel></MenuItem.Header>
+                                            </MenuItem>
+                                            <MenuItem Style="{StaticResource ApplicationMenuItem}" Click="ChooseItemIcon_Click">
+                                                <MenuItem.Header><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE91B;" Width="27" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"/><TextBlock Text="Изменить значок"/></StackPanel></MenuItem.Header>
+                                            </MenuItem>
+                                            <MenuItem Style="{StaticResource CustomIconMenuItem}" Click="ResetItemIcon_Click">
+                                                <MenuItem.Header><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE777;" Width="27" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"/><TextBlock Text="Вернуть стандартный значок"/></StackPanel></MenuItem.Header>
+                                            </MenuItem>
+                                            <MenuItem Style="{StaticResource ApplicationMenuItem}" Click="OpenFileLocation_Click">
+                                                <MenuItem.Header><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8B7;" Width="27" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"/><TextBlock Text="Расположение файла"/></StackPanel></MenuItem.Header>
+                                            </MenuItem>
+                                            <Separator>
+                                                <Separator.Style>
+                                                    <Style TargetType="Separator">
+                                                        <Style.Triggers><DataTrigger Binding="{Binding IsWidget}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                                                    </Style>
+                                                </Separator.Style>
+                                            </Separator>
+                                            <MenuItem Style="{StaticResource ApplicationMenuItem}" IsCheckable="True"
+                                                      IsChecked="{Binding RunAsAdministrator, Mode=TwoWay}" Click="RunAsAdmin_Click">
+                                                <MenuItem.Header><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE83D;" Width="27" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"/><TextBlock Text="Запускать от администратора"/></StackPanel></MenuItem.Header>
+                                            </MenuItem>
+                                            <MenuItem Style="{StaticResource InFolderMenuItem}" Click="MoveOutOfFolder_Click">
+                                                <MenuItem.Header><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8DE;" Width="27" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"/><TextBlock Text="На главный экран"/></StackPanel></MenuItem.Header>
+                                            </MenuItem>
+                                            <Separator/>
+                                            <MenuItem Style="{StaticResource ModernMenuItem}" Foreground="#FF667A" Click="RemoveItem_Click">
+                                                <MenuItem.Header><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE74D;" Width="27" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"/><TextBlock Text="Убрать из AppLauncher"/></StackPanel></MenuItem.Header>
+                                            </MenuItem>
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
+                                    <ContentControl Content="{Binding}"
+                                                    HorizontalContentAlignment="Stretch"
+                                                    VerticalContentAlignment="Stretch">
+                                        <ContentControl.Style>
+                                            <Style TargetType="ContentControl">
+                                                <Setter Property="ContentTemplate" Value="{StaticResource StandardTileContentTemplate}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsWidget}" Value="True">
+                                                        <Setter Property="ContentTemplate" Value="{StaticResource WidgetTileContentTemplate}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ContentControl.Style>
+                                    </ContentControl>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Заранее отрисованная страница для бесшовного перелистывания. -->
+                    <ItemsControl x:Name="IncomingLauncherItems" ItemsSource="{Binding IncomingPageItems}"
+                                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                  Visibility="Collapsed" IsHitTestVisible="False" Panel.ZIndex="2">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <controls:WidgetGridPanel IsItemsHost="True" ClipToBounds="True"
+                                                          CellWidth="{Binding GridCellWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          CellHeight="{Binding GridCellHeight, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource TileButtonStyle}"
+                                        Width="{Binding DisplayWidth}"
+                                        Height="{Binding DisplayHeight}"
+                                        Margin="{Binding TileMargin, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        Effect="{x:Null}"
+                                        IsHitTestVisible="False">
+                                    <ContentControl Content="{Binding}"
+                                                    HorizontalContentAlignment="Stretch"
+                                                    VerticalContentAlignment="Stretch">
+                                        <ContentControl.Style>
+                                            <Style TargetType="ContentControl">
+                                                <Setter Property="ContentTemplate" Value="{StaticResource StandardTileContentTemplate}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsWidget}" Value="True">
+                                                        <Setter Property="ContentTemplate" Value="{StaticResource WidgetTileContentTemplate}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ContentControl.Style>
+                                    </ContentControl>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Во время перелистывания двигаются только два заранее
+                         отрисованных кадра. Живые WebView2 и сложные сетки в
+                         анимации не участвуют, поэтому колесо реагирует сразу. -->
+                    <Image x:Name="OutgoingPageSnapshot" Panel.ZIndex="4"
+                           Visibility="Collapsed" IsHitTestVisible="False"
+                           Stretch="Fill" SnapsToDevicePixels="True"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <Image x:Name="IncomingPageSnapshot" Panel.ZIndex="5"
+                           Visibility="Collapsed" IsHitTestVisible="False"
+                           Stretch="Fill" SnapsToDevicePixels="True"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+
+                    <!-- Предпросмотр ячеек, которые займёт перетаскиваемый элемент. -->
+                    <Grid x:Name="DropPlacementPreview"
+                          Visibility="Collapsed" IsHitTestVisible="False"
+                          HorizontalAlignment="Left" VerticalAlignment="Top"
+                          Panel.ZIndex="7" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                        <Grid.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform x:Name="DropPlacementScale" ScaleX="1" ScaleY="1"/>
+                                <TranslateTransform x:Name="DropPlacementTranslate"/>
+                            </TransformGroup>
+                        </Grid.RenderTransform>
+                        <Border CornerRadius="10" Background="{DynamicResource AccentSolidBrush}" Opacity="0.08"/>
+                        <Canvas x:Name="DropPlacementCells" ClipToBounds="True"/>
+                        <Border CornerRadius="10" BorderBrush="{DynamicResource AccentSolidBrush}"
+                                BorderThickness="2" Opacity="0.95"/>
+                        <Border x:Name="DropPlacementSizeBadge"
+                                HorizontalAlignment="Right" VerticalAlignment="Top"
+                                Margin="7" Padding="7,3" CornerRadius="6"
+                                Background="{DynamicResource AccentSolidBrush}">
+                            <TextBlock x:Name="DropPlacementSizeText" Foreground="White"
+                                       FontFamily="{StaticResource UiFont}" FontSize="10"
+                                       FontWeight="SemiBold"/>
+                        </Border>
+                    </Grid>
+                </Grid>
+
+                <StackPanel x:Name="EmptyState" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Border Width="78" Height="78" Background="{DynamicResource TileBrush}" CornerRadius="17">
+                        <TextBlock Text="&#xE8B7;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="32"
+                                   Foreground="{DynamicResource MutedTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock x:Name="EmptyTitle" Text="Здесь пока пусто" Foreground="{DynamicResource TextBrush}"
+                               FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" Margin="0,14,0,5"/>
+                    <TextBlock Text="Перетащите сюда приложение или ярлык" Foreground="{DynamicResource MutedTextBrush}"
+                               FontFamily="{StaticResource UiFont}" FontSize="13" HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <Border x:Name="ToastBorder" Background="#F0343949" CornerRadius="9" Padding="13,8"
+                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,68"
+                        Visibility="Collapsed" Panel.ZIndex="10">
+                    <TextBlock x:Name="ToastText" Foreground="White" FontFamily="{StaticResource UiFont}" FontSize="11"/>
+                </Border>
+
+                <!-- Постраничная навигация и мини-карта -->
+                <Border x:Name="PageNavigator" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                        Margin="0,0,0,10" Padding="5" CornerRadius="14" Visibility="Collapsed"
+                        Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource WindowBorderBrush}"
+                        BorderThickness="1" Panel.ZIndex="9">
+                    <Border.Effect><DropShadowEffect Color="#080A12" BlurRadius="14" ShadowDepth="3" Opacity="0.34"/></Border.Effect>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="PreviousPageButton" Style="{StaticResource PageArrowButton}"
+                                Content="&#xE76B;" ToolTip="Предыдущая страница" Click="PreviousPage_Click"/>
+                        <StackPanel x:Name="PageDotsPanel" Orientation="Horizontal" Margin="7,0"
+                                    VerticalAlignment="Center"/>
+                        <TextBlock x:Name="PageNumberText" MinWidth="35" Margin="4,0,7,0"
+                                   Foreground="{DynamicResource MutedTextBrush}" FontFamily="{StaticResource UiFont}"
+                                   FontSize="10.5" TextAlignment="Center" VerticalAlignment="Center"/>
+                        <Button x:Name="NextPageButton" Style="{StaticResource PageArrowButton}"
+                                Content="&#xE76C;" ToolTip="Следующая страница" Click="NextPage_Click"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Нижние действия: настройки слева, команды справа -->
+                <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,12,10"
+                        Padding="4" CornerRadius="14" Background="{DynamicResource PanelBrush}"
+                        BorderBrush="{DynamicResource WindowBorderBrush}" BorderThickness="1" Panel.ZIndex="9">
+                    <Border.Effect><DropShadowEffect Color="#080A12" BlurRadius="14" ShadowDepth="3" Opacity="0.34"/></Border.Effect>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Style="{StaticResource AccentFloatingIconButton}" ToolTip="Добавить приложение" Click="AddApplication_Click">
+                            <Path Width="21" Height="21" Stroke="White" StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  Stretch="Uniform" Data="M3,3 L17,3 L17,19 L3,19 Z M10,7 L10,15 M6,11 L14,11"/>
+                        </Button>
+                        <Button x:Name="AddFolderButton" Margin="5,0,0,0" Style="{StaticResource FloatingIconButton}"
+                                ToolTip="Создать новую группу" Click="AddFolder_Click">
+                            <Grid Width="22" Height="20">
+                                <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.6"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" Stretch="Uniform"
+                                      Data="M1,5 L7,5 L9,8 L20,8 L20,18 L1,18 Z"/>
+                                <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.6"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" Data="M11,10 L11,16 M8,13 L14,13"/>
+                            </Grid>
+                        </Button>
+                        <Button x:Name="AddWidgetButton" Margin="5,0,0,0" Style="{StaticResource FloatingIconButton}"
+                                ToolTip="Создать заготовку виджета" Click="AddWidget_Click">
+                            <Grid Width="21" Height="21">
+                                <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.55"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" Stretch="Uniform"
+                                      Data="M2,3 L19,3 L19,18 L2,18 Z M6,7 L15,7 M6,11 L12,11 M6,15 L10,15"/>
+                                <Ellipse Width="4" Height="4" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                         Margin="0,0,1,1" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                            </Grid>
+                        </Button>
+                    </StackPanel>
+                </Border>
+                <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12,0,0,10"
+                        Padding="4" CornerRadius="14" Background="{DynamicResource PanelBrush}"
+                        BorderBrush="{DynamicResource WindowBorderBrush}" BorderThickness="1" Panel.ZIndex="9">
+                    <Border.Effect><DropShadowEffect Color="#080A12" BlurRadius="14" ShadowDepth="3" Opacity="0.34"/></Border.Effect>
+                    <Button Style="{StaticResource FloatingIconButton}" ToolTip="Настройки" Click="SettingsButton_Click"
+                            Content="&#xE713;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="17"/>
+                </Border>
+            </Grid>
+
+            <!-- Настройки -->
+            <Border x:Name="SettingsPanel" Grid.RowSpan="3" Width="440" Margin="8,8,0,8" HorizontalAlignment="Left"
+                    Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource WindowBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Visibility="Collapsed" Panel.ZIndex="20" Padding="22"
+                    RenderTransformOrigin="0,0.5">
+                <Border.RenderTransform><TranslateTransform x:Name="SettingsPanelTranslate" X="0"/></Border.RenderTransform>
+                <Border.Effect><DropShadowEffect Color="#080A12" BlurRadius="26" ShadowDepth="6" Opacity="0.38"/></Border.Effect>
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock Text="Настройки" Foreground="{DynamicResource TextBrush}" FontFamily="{StaticResource DisplayFont}" FontSize="22" FontWeight="SemiBold"/>
+                            <TextBlock Text="Все параметры аккуратно по разделам" Foreground="{DynamicResource MutedTextBrush}"
+                                       FontFamily="{StaticResource UiFont}" FontSize="11" Margin="0,3,0,0"/>
+                        </StackPanel>
+                        <Button Style="{StaticResource ChromeButton}" Content="&#xE8BB;" ToolTip="Закрыть настройки"
+                                HorizontalAlignment="Right" VerticalAlignment="Top" Click="CloseSettings_Click"/>
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="1" Margin="0,20,0,12" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="0,0,8,0">
+                            <Expander Style="{StaticResource SettingsCategoryExpander}" IsExpanded="True">
+                                <Expander.Header>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <TextBlock Text="&#xE790;" Foreground="{DynamicResource AccentSolidBrush}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="17" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1"><TextBlock Text="Интерфейс" FontWeight="SemiBold"/><TextBlock Text="Тема, цвета, плитки и сетка" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" Margin="0,2,0,0"/></StackPanel>
+                                    </Grid>
+                                </Expander.Header>
+                                <StackPanel>
+                                    <TextBlock Text="Оформление" Style="{StaticResource SettingsSubsectionTitle}"/>
+                                    <CheckBox x:Name="LightThemeCheckBox" Style="{StaticResource ToggleSwitch}" Content="Светлая тема" Checked="ThemeChanged" Unchecked="ThemeChanged"/>
+                                    <Grid Margin="0,17,0,0">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center"><TextBlock Text="Фон приложения" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="WindowColorValueText" Margin="0,3,0,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="11"/></StackPanel>
+                                        <Button Grid.Column="1" Style="{StaticResource ColorChoiceButton}" Click="ChooseWindowColor_Click"><StackPanel Orientation="Horizontal"><Border x:Name="WindowColorSwatch" Width="18" Height="18" CornerRadius="5" Margin="0,0,8,0" BorderBrush="{DynamicResource ColorSwatchBorderBrush}" BorderThickness="1.5"/><TextBlock Text="Выбрать" VerticalAlignment="Center"/></StackPanel></Button>
+                                    </Grid>
+                                    <Grid Margin="0,15,0,0"><TextBlock Text="Прозрачность окна" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="WindowOpacityValueText" Style="{StaticResource SettingsValueText}"/></Grid>
+                                    <Slider x:Name="WindowOpacitySlider" Margin="0,5,0,0" Minimum="45" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="WindowOpacityChanged"/>
+
+                                    <Border Height="1" Margin="0,18,0,15" Background="{DynamicResource WindowBorderBrush}"/>
+                                    <TextBlock Text="Плитки" Style="{StaticResource SettingsSubsectionTitle}"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center"><TextBlock Text="Цвет плиток" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="TileColorValueText" Margin="0,3,0,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="11"/></StackPanel>
+                                        <Button Grid.Column="1" Style="{StaticResource ColorChoiceButton}" Click="ChooseTileColor_Click"><StackPanel Orientation="Horizontal"><Border x:Name="TileColorSwatch" Width="18" Height="18" CornerRadius="5" Margin="0,0,8,0" BorderBrush="{DynamicResource ColorSwatchBorderBrush}" BorderThickness="1.5"/><TextBlock Text="Выбрать" VerticalAlignment="Center"/></StackPanel></Button>
+                                    </Grid>
+                                    <Grid Margin="0,15,0,0"><TextBlock Text="Прозрачность плиток" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="TileOpacityValueText" Style="{StaticResource SettingsValueText}"/></Grid>
+                                    <Slider x:Name="TileOpacitySlider" Margin="0,5,0,0" Minimum="5" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="TileAppearanceChanged"/>
+                                    <CheckBox x:Name="TileShadowCheckBox" Margin="0,17,0,0" Style="{StaticResource ToggleSwitch}" Content="Отбрасывать тень" Checked="TileShadowChanged" Unchecked="TileShadowChanged"/>
+                                    <Grid Margin="0,15,0,0"><TextBlock Text="Интенсивность тени" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="TileShadowOpacityValueText" Style="{StaticResource SettingsValueText}"/></Grid>
+                                    <Slider x:Name="TileShadowOpacitySlider" Margin="0,5,0,0" Minimum="10" Maximum="70" TickFrequency="5" IsSnapToTickEnabled="True" IsEnabled="{Binding IsChecked, ElementName=TileShadowCheckBox}" Style="{StaticResource ModernSlider}" ValueChanged="TileShadowOpacityChanged"/>
+
+                                    <Border Height="1" Margin="0,18,0,15" Background="{DynamicResource WindowBorderBrush}"/>
+                                    <TextBlock Text="Значки и сетка" Style="{StaticResource SettingsSubsectionTitle}"/>
+                                    <Grid><TextBlock Text="Размер значка" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="IconSizeValueText" Style="{StaticResource SettingsValueText}"/></Grid>
+                                    <Slider x:Name="IconSizeSlider" Margin="0,5,0,0" Minimum="36" Maximum="82" TickFrequency="2" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="LayoutMetricsChanged"/>
+                                    <Grid Margin="0,15,0,0"><TextBlock Text="Размер плитки" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="TileSizeValueText" Style="{StaticResource SettingsValueText}"/></Grid>
+                                    <Slider x:Name="TileSizeSlider" Margin="0,5,0,0" Minimum="100" Maximum="170" TickFrequency="2" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="LayoutMetricsChanged"/>
+                                    <Grid Margin="0,15,0,0"><TextBlock Text="Расстояние в сетке" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="GridSpacingValueText" Style="{StaticResource SettingsValueText}"/></Grid>
+                                    <Slider x:Name="GridSpacingSlider" Margin="0,5,0,0" Minimum="2" Maximum="20" TickFrequency="2" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="LayoutMetricsChanged"/>
+                                    <Button Margin="0,17,0,0" Height="38" Style="{StaticResource SecondaryActionButton}" Content="Сбросить оформление" Click="ResetAppearance_Click"/>
+                                </StackPanel>
+                            </Expander>
+
+                            <Expander Style="{StaticResource SettingsCategoryExpander}">
+                                <Expander.Header><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Text="&#xE8B7;" Foreground="{DynamicResource AccentSolidBrush}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="17" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Группы и виджеты" FontWeight="SemiBold"/><TextBlock Text="Отображение содержимого" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" Margin="0,2,0,0"/></StackPanel></Grid></Expander.Header>
+                                <StackPanel>
+                                    <TextBlock Text="Группы приложений" Style="{StaticResource SettingsSubsectionTitle}"/>
+                                    <CheckBox x:Name="FolderThumbnailsCheckBox" Style="{StaticResource ToggleSwitch}" Content="Миниатюры вместо значка" Checked="FolderThumbnailSettingChanged" Unchecked="FolderThumbnailSettingChanged"/>
+                                    <TextBlock Text="Показывать четыре наиболее часто запускаемых приложения из группы" Margin="0,7,54,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
+                                    <Grid Margin="0,16,0,0"><TextBlock Text="Размер миниатюр" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="FolderThumbnailSizeValueText" Style="{StaticResource SettingsValueText}"/></Grid>
+                                    <Slider x:Name="FolderThumbnailSizeSlider" Margin="0,5,0,0" Minimum="55" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" IsEnabled="{Binding IsChecked, ElementName=FolderThumbnailsCheckBox}" Style="{StaticResource ModernSlider}" ValueChanged="FolderThumbnailSizeChanged"/>
+                                    <TextBlock Text="Размер значков внутри каждого виджета настраивается в его редакторе" Margin="0,14,0,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Expander>
+
+                            <Expander Style="{StaticResource SettingsCategoryExpander}">
+                                <Expander.Header><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Text="&#xE823;" Foreground="{DynamicResource AccentSolidBrush}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="17" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Поведение" FontWeight="SemiBold"/><TextBlock Text="Запуск, скрытие и закрепление" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" Margin="0,2,0,0"/></StackPanel></Grid></Expander.Header>
+                                <StackPanel>
+                                    <CheckBox x:Name="HideAfterLaunchCheckBox" Style="{StaticResource ToggleSwitch}" Content="Скрывать после запуска" Checked="SettingsChanged" Unchecked="SettingsChanged"/>
+                                    <CheckBox x:Name="AlwaysOnTopCheckBox" Margin="0,17,0,0" Style="{StaticResource ToggleSwitch}" Content="Закрепить окно поверх остальных" Checked="SettingsChanged" Unchecked="SettingsChanged"/>
+                                    <TextBlock Text="Откреплённое окно автоматически скрывается при переходе в другое приложение или на рабочий стол" Margin="0,7,48,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Expander>
+
+                            <Expander Style="{StaticResource SettingsCategoryExpander}">
+                                <Expander.Header><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Text="&#xE765;" Foreground="{DynamicResource AccentSolidBrush}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="17" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Управление" FontWeight="SemiBold"/><TextBlock Text="Горячие клавиши" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" Margin="0,2,0,0"/></StackPanel></Grid></Expander.Header>
+                                <StackPanel>
+                                    <CheckBox x:Name="GlobalHotkeyCheckBox" Style="{StaticResource ToggleSwitch}" Content="Глобальная горячая клавиша" Checked="GlobalHotkeyEnabledChanged" Unchecked="GlobalHotkeyEnabledChanged"/>
+                                    <Grid Margin="0,13,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Button x:Name="HotkeyCaptureButton" Height="40" Padding="13,0" Style="{StaticResource SecondaryActionButton}" IsEnabled="{Binding IsChecked, ElementName=GlobalHotkeyCheckBox}" Click="HotkeyCaptureButton_Click"/><Button Grid.Column="1" Height="40" Margin="8,0,0,0" Padding="12,0" Style="{StaticResource SecondaryActionButton}" Content="Сбросить" IsEnabled="{Binding IsChecked, ElementName=GlobalHotkeyCheckBox}" ToolTip="Вернуть Ctrl + Alt + Space" Click="ResetHotkey_Click"/></Grid>
+                                    <TextBlock x:Name="HotkeyStatusText" Margin="0,7,0,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Expander>
+
+                            <Expander Style="{StaticResource SettingsCategoryExpander}">
+                                <Expander.Header><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Text="&#xE737;" Foreground="{DynamicResource AccentSolidBrush}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="17" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Окно" FontWeight="SemiBold"/><TextBlock Text="Размер рабочей области" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" Margin="0,2,0,0"/></StackPanel></Grid></Expander.Header>
+                                <StackPanel>
+                                    <Grid><TextBlock Text="Ширина" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="WindowWidthValueText" Style="{StaticResource SettingsValueText}"/></Grid>
+                                    <Slider x:Name="WindowWidthSlider" Margin="0,5,0,0" Minimum="760" Maximum="1400" TickFrequency="20" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="WindowMetricsChanged"/>
+                                    <Grid Margin="0,15,0,0"><TextBlock Text="Высота" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="WindowHeightValueText" Style="{StaticResource SettingsValueText}"/></Grid>
+                                    <Slider x:Name="WindowHeightSlider" Margin="0,5,0,0" Minimum="500" Maximum="950" TickFrequency="10" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="WindowMetricsChanged"/>
+                                </StackPanel>
+                            </Expander>
+
+                            <Expander Style="{StaticResource SettingsCategoryExpander}" Margin="0">
+                                <Expander.Header><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Text="&#xE8F1;" Foreground="{DynamicResource AccentSolidBrush}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="17" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Данные" FontWeight="SemiBold"/><TextBlock Text="Раскладка и служебные файлы" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" Margin="0,2,0,0"/></StackPanel></Grid></Expander.Header>
+                                <Button Height="40" Style="{StaticResource SecondaryActionButton}" Content="Открыть файл раскладки" Click="OpenLayoutFile_Click"/>
+                            </Expander>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <Grid Grid.Row="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Border BorderBrush="{DynamicResource WindowBorderBrush}" BorderThickness="0,1,0,0"
+                                Padding="2,11,2,0" Margin="0,0,0,10">
+                            <Grid>
+                                <TextBlock Text="AppLauncher" Foreground="{DynamicResource TextBrush}"
+                                           FontFamily="{StaticResource UiFont}" FontSize="11.5" FontWeight="SemiBold"/>
+                                <TextBlock HorizontalAlignment="Right" Foreground="{DynamicResource MutedTextBrush}"
+                                           FontFamily="{StaticResource UiFont}" FontSize="11.5">
+                                    <Run Text="Версия "/><Run Text="{Binding AppVersion, Mode=OneWay}"/>
+                                </TextBlock>
+                            </Grid>
+                        </Border>
+                        <Button Grid.Row="1" Height="42" Padding="13,0" Style="{StaticResource SecondaryActionButton}"
+                                Foreground="#FF6B7D" Content="Скрыть AppLauncher в трей" Click="CloseButton_Click"/>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Собственный drag-слой: пружинный значок и зоны перелистывания. -->
+            <Grid x:Name="DragVisualLayer" Grid.RowSpan="3" Panel.ZIndex="80" IsHitTestVisible="False">
+                <Border x:Name="LeftEdgeCue" Width="68" HorizontalAlignment="Left" Visibility="Collapsed" Opacity="0.88">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                            <GradientStop Color="#8A7569FF" Offset="0"/>
+                            <GradientStop Color="#007569FF" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <TextBlock Text="&#xE76B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                               Foreground="White" FontSize="25" HorizontalAlignment="Left"
+                               Margin="14,0,0,0" VerticalAlignment="Center"/>
+                </Border>
+                <Border x:Name="RightEdgeCue" Width="68" HorizontalAlignment="Right" Visibility="Collapsed" Opacity="0.88">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                            <GradientStop Color="#007569FF" Offset="0"/>
+                            <GradientStop Color="#8A7569FF" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <TextBlock Text="&#xE76C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                               Foreground="White" FontSize="25" HorizontalAlignment="Right"
+                               Margin="0,0,14,0" VerticalAlignment="Center"/>
+                </Border>
+
+                <Canvas ClipToBounds="True">
+                    <Border x:Name="DragGhost" Width="88" Height="88" Visibility="Collapsed" Opacity="0.96"
+                            DataContext="{x:Null}"
+                            Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource AccentSolidBrush}"
+                            BorderThickness="1.5" CornerRadius="20" RenderTransformOrigin="0.5,0.5">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#080A12" BlurRadius="24" ShadowDepth="8" Opacity="0.58"/>
+                        </Border.Effect>
+                        <Border.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform x:Name="DragGhostScale" ScaleX="1" ScaleY="1"/>
+                                <RotateTransform x:Name="DragGhostRotate" Angle="0"/>
+                                <TranslateTransform x:Name="DragGhostTranslate" X="0" Y="0"/>
+                            </TransformGroup>
+                        </Border.RenderTransform>
+                        <Grid Width="{Binding IconPlateSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                              Height="{Binding IconPlateSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Image Style="{StaticResource LauncherSingleIconStyle}"
+                                   Source="{Binding Converter={StaticResource LauncherIconConverter}}"
+                                   Width="{Binding IconSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                                   Height="{Binding IconSize, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                            <ItemsControl Style="{StaticResource FolderThumbnailControlStyle}"
+                                          ItemsSource="{Binding FolderThumbnailItems}"
+                                          ItemTemplate="{StaticResource FolderThumbnailItemTemplate}"
+                                          Width="{Binding IconPlateSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                                          Height="{Binding IconPlateSize, RelativeSource={RelativeSource AncestorType=Window}}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><UniformGrid Rows="2" Columns="2"/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                            <TextBlock Style="{StaticResource WidgetDragGlyphStyle}" Text="&#xE950;"
+                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       Foreground="{DynamicResource AccentSolidBrush}" FontSize="34"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+                </Canvas>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
