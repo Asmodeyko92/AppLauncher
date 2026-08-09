@@ -1,57 +1,47 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="shell" x1="74" y1="48" x2="438" y2="466" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#A692FF"/>
-      <stop offset=".36" stop-color="#6257E9"/>
-      <stop offset=".72" stop-color="#272B84"/>
-      <stop offset="1" stop-color="#141737"/>
+    <linearGradient id="shell" x1="62" y1="42" x2="455" y2="474" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A795FF"/>
+      <stop offset=".42" stop-color="#6658EF"/>
+      <stop offset="1" stop-color="#17215E"/>
     </linearGradient>
-    <linearGradient id="core" x1="145" y1="115" x2="370" y2="401" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#293376"/>
-      <stop offset=".54" stop-color="#141944"/>
-      <stop offset="1" stop-color="#090B22"/>
+    <linearGradient id="panel" x1="115" y1="107" x2="398" y2="411" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#242B70"/>
+      <stop offset="1" stop-color="#0B1031"/>
     </linearGradient>
-    <linearGradient id="gem" x1="186" y1="151" x2="325" y2="342" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFFFFF"/>
-      <stop offset=".24" stop-color="#B8DCFF"/>
-      <stop offset=".60" stop-color="#70A7FF"/>
-      <stop offset="1" stop-color="#8064FF"/>
+    <linearGradient id="tile" x1="139" y1="141" x2="363" y2="367" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F9FAFF"/>
+      <stop offset=".42" stop-color="#B9D5FF"/>
+      <stop offset="1" stop-color="#7890FF"/>
     </linearGradient>
-    <linearGradient id="gold" x1="132" y1="121" x2="380" y2="387" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFED9B"/>
-      <stop offset=".32" stop-color="#F4BC54"/>
-      <stop offset=".74" stop-color="#BA6B29"/>
-      <stop offset="1" stop-color="#70401F"/>
+    <linearGradient id="accent" x1="213" y1="196" x2="301" y2="326" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6DFFD0"/>
+      <stop offset="1" stop-color="#27B878"/>
     </linearGradient>
-    <filter id="shadow" x="-35%" y="-35%" width="170%" height="180%">
-      <feDropShadow dx="0" dy="20" stdDeviation="18" flood-color="#050611" flood-opacity=".72"/>
-    </filter>
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="11" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#050612" flood-opacity=".7"/>
     </filter>
   </defs>
-  <rect x="38" y="38" width="436" height="436" rx="124" fill="#090B1E" filter="url(#shadow)"/>
-  <rect x="45" y="45" width="422" height="422" rx="117" fill="url(#shell)"/>
-  <rect x="57" y="57" width="398" height="398" rx="105" fill="none" stroke="#D6CEFF" stroke-opacity=".52" stroke-width="7"/>
-  <path d="M100 169c20-62 72-105 141-112 81-8 151 39 178 108-42-33-88-45-143-39-73 8-127 49-176 43Z" fill="#FFFFFF" opacity=".14"/>
-  <rect x="104" y="104" width="304" height="304" rx="82" fill="url(#core)" stroke="#B9B3FF" stroke-opacity=".35" stroke-width="4"/>
-  <path d="M151 284 256 151l105 133-105 77-105-77Z" fill="#7670FF" opacity=".17" filter="url(#glow)"/>
-  <path d="M256 141 352 234 256 371 160 234 256 141Z" fill="url(#gem)" stroke="#FFFFFF" stroke-opacity=".62" stroke-width="6"/>
-  <path d="m256 164 70 72-70 105-70-105 70-72Z" fill="#151A57" opacity=".72"/>
-  <path d="m256 164 70 72-70 18-70-18 70-72Z" fill="#FFFFFF" opacity=".5"/>
-  <circle cx="256" cy="257" r="35" fill="#0A0D2A" stroke="url(#gold)" stroke-width="10"/>
-  <path d="M243 236h26v16h16v11h-16v16h-26v-16h-16v-11h16v-16Z" fill="url(#gold)"/>
-  <g fill="url(#gold)" stroke="#FFF1B2" stroke-opacity=".45" stroke-width="2">
-    <rect x="114" y="114" width="47" height="47" rx="15"/>
-    <rect x="351" y="114" width="47" height="47" rx="15"/>
-    <rect x="114" y="351" width="47" height="47" rx="15"/>
-    <rect x="351" y="351" width="47" height="47" rx="15"/>
+  <rect x="38" y="38" width="436" height="436" rx="118" fill="#090C25" filter="url(#shadow)"/>
+  <rect x="45" y="45" width="422" height="422" rx="111" fill="url(#shell)"/>
+  <rect x="57" y="57" width="398" height="398" rx="99" fill="none" stroke="#DDD8FF" stroke-opacity=".55" stroke-width="8"/>
+  <path d="M82 188C105 97 189 55 267 66c72 10 125 58 152 124-62-47-126-55-190-28-48 20-92 45-147 26Z" fill="#FFF" opacity=".15"/>
+  <rect x="104" y="104" width="304" height="304" rx="75" fill="url(#panel)" stroke="#C6C0FF" stroke-opacity=".42" stroke-width="4"/>
+  <g fill="url(#tile)" stroke="#FFF" stroke-opacity=".62" stroke-width="4">
+    <rect x="137" y="139" width="98" height="98" rx="25"/>
+    <rect x="277" y="139" width="98" height="98" rx="25"/>
+    <rect x="137" y="279" width="98" height="98" rx="25"/>
   </g>
-  <g fill="#161A4A">
-    <rect x="126" y="126" width="23" height="23" rx="7"/>
-    <rect x="363" y="126" width="23" height="23" rx="7"/>
-    <rect x="126" y="363" width="23" height="23" rx="7"/>
-    <rect x="363" y="363" width="23" height="23" rx="7"/>
+  <rect x="277" y="279" width="98" height="98" rx="25" fill="url(#accent)" stroke="#D5FFEE" stroke-opacity=".82" stroke-width="4"/>
+  <g fill="#1A2162">
+    <rect x="160" y="163" width="52" height="10" rx="5"/>
+    <rect x="160" y="188" width="38" height="10" rx="5"/>
+    <rect x="300" y="163" width="52" height="10" rx="5"/>
+    <rect x="300" y="188" width="38" height="10" rx="5"/>
+    <rect x="160" y="303" width="52" height="10" rx="5"/>
+    <rect x="160" y="328" width="38" height="10" rx="5"/>
   </g>
+  <path d="M304 325h44m-22-22v44" fill="none" stroke="#073D2B" stroke-linecap="round" stroke-width="12"/>
+  <circle cx="256" cy="256" r="30" fill="#101746" stroke="#FFDB79" stroke-width="8"/>
+  <path d="M246 235h20v12h12v18h-12v12h-20v-12h-12v-18h12v-12Z" fill="#FFDB79"/>
 </svg>

@@ -135,6 +135,8 @@ public partial class WidgetEditorDialog : Window
         Resources["SwitchOffBrush"] = GetOwnerBrush(owner, "SwitchOffBrush", "#20FFFFFF");
         Resources["TileBorderBrush"] = GetOwnerBrush(owner, "TileBorderBrush", "#20FFFFFF");
         Resources["TextBrush"] = GetOwnerBrush(owner, "TextBrush", "#FFFFFF");
+        Resources["TileBrush"] = GetOwnerBrush(owner, "TileBrush", "#15FFFFFF");
+        Resources["SearchBrush"] = GetOwnerBrush(owner, "SearchBrush", "#0AFFFFFF");
 
         if (Resources["DialogSurfaceBrush"] is not SolidColorBrush surface)
             return true;

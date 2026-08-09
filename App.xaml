@@ -190,29 +190,53 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="controls:NumericStepper">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="36"/>
+                        <Border Background="{DynamicResource SearchBrush}" BorderBrush="{DynamicResource TileBorderBrush}"
+                                BorderThickness="1" CornerRadius="8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="32"/>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="36"/>
-                            </Grid.ColumnDefinitions>
-                            <RepeatButton x:Name="PART_Decrease" Grid.Column="0" Content="&#xE74B;"
-                                          FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
-                                          Background="{DynamicResource TileBrush}" Foreground="{TemplateBinding Foreground}"
-                                          BorderBrush="{DynamicResource TileBorderBrush}" BorderThickness="1"
-                                          Delay="350" Interval="80" Cursor="Hand"/>
-                            <TextBox x:Name="PART_Value" Grid.Column="1" Margin="5,0" Padding="6,0"
-                                     Text="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay, UpdateSourceTrigger=Explicit, StringFormat=0}"
-                                     HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                                     Background="{DynamicResource SearchBrush}" Foreground="{TemplateBinding Foreground}"
-                                     CaretBrush="{TemplateBinding Foreground}" BorderBrush="{DynamicResource TileBorderBrush}"
-                                     BorderThickness="1" FontSize="11"/>
-                            <RepeatButton x:Name="PART_Increase" Grid.Column="2" Content="&#xE710;"
-                                          FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
-                                          Background="{DynamicResource TileBrush}" Foreground="{TemplateBinding Foreground}"
-                                          BorderBrush="{DynamicResource TileBorderBrush}" BorderThickness="1"
-                                          Delay="350" Interval="80" Cursor="Hand"/>
-                        </Grid>
+                                    <ColumnDefinition Width="32"/>
+                                </Grid.ColumnDefinitions>
+                                <RepeatButton x:Name="PART_Decrease" Grid.Column="0" Content="&#xE74B;"
+                                              FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
+                                              Foreground="{TemplateBinding Foreground}" Background="Transparent"
+                                              BorderThickness="0" Delay="350" Interval="80" Cursor="Hand">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate TargetType="RepeatButton">
+                                            <Border x:Name="Surface" Background="{TemplateBinding Background}" CornerRadius="7">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource HoverBrush}"/></Trigger>
+                                                <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.55"/></Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                                <TextBox x:Name="PART_Value" Grid.Column="1" Padding="4,0"
+                                         Text="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay, UpdateSourceTrigger=Explicit, StringFormat=0}"
+                                         HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                         Background="Transparent" Foreground="{TemplateBinding Foreground}"
+                                         CaretBrush="{TemplateBinding Foreground}" BorderThickness="0" FontSize="11"/>
+                                <RepeatButton x:Name="PART_Increase" Grid.Column="2" Content="&#xE710;"
+                                              FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
+                                              Foreground="{TemplateBinding Foreground}" Background="Transparent"
+                                              BorderThickness="0" Delay="350" Interval="80" Cursor="Hand">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate TargetType="RepeatButton">
+                                            <Border x:Name="Surface" Background="{TemplateBinding Background}" CornerRadius="7">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource HoverBrush}"/></Trigger>
+                                                <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.55"/></Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Grid>
+                        </Border>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
