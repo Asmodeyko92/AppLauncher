@@ -370,9 +370,8 @@
                                             <TextBlock Text="Размер значков" Style="{StaticResource FieldLabel}"/>
                                             <TextBlock x:Name="WidgetIconSizeValueText" Style="{StaticResource ValueLabel}"/>
                                         </Grid>
-                                        <Slider x:Name="WidgetIconSizeSlider" Minimum="22" Maximum="96" TickFrequency="2"
-                                                IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}"
-                                                ValueChanged="WidgetIconSizeSlider_ValueChanged"/>
+                                        <controls:NumericStepper x:Name="WidgetIconSizeSlider" Minimum="22" Maximum="96" Step="2"
+                                                                 ValueChanged="WidgetIconSizeSlider_ValueChanged"/>
                                         <Button Content="Очистить внутреннюю сетку" Style="{StaticResource EditorButton}"
                                                 IsEnabled="{Binding CanEditWidgetChildren}"
                                                 HorizontalAlignment="Stretch" Margin="0,11,0,0" Click="ClearWidgetGrid_Click"/>
@@ -395,16 +394,16 @@
                                     </StackPanel>
 
                                     <Grid><TextBlock Text="Масштаб" Style="{StaticResource FieldLabel}"/><TextBlock x:Name="ScaleValueText" Style="{StaticResource ValueLabel}"/></Grid>
-                                    <Slider x:Name="ScaleSlider" Minimum="25" Maximum="300" TickFrequency="5" IsSnapToTickEnabled="True"
-                                            Style="{StaticResource ModernSlider}" ValueChanged="PreviewSlider_ValueChanged"/>
+                                    <controls:NumericStepper x:Name="ScaleSlider" Minimum="25" Maximum="300" Step="5"
+                                                             ValueChanged="PreviewSlider_ValueChanged"/>
 
                                     <Grid Margin="0,11,0,0"><TextBlock Text="По горизонтали" Style="{StaticResource FieldLabel}"/><TextBlock x:Name="OffsetXValueText" Style="{StaticResource ValueLabel}"/></Grid>
-                                    <Slider x:Name="OffsetXSlider" Minimum="-1000" Maximum="1000" TickFrequency="1"
-                                            Style="{StaticResource ModernSlider}" ValueChanged="PreviewSlider_ValueChanged"/>
+                                    <controls:NumericStepper x:Name="OffsetXSlider" Minimum="-1000" Maximum="1000" Step="1"
+                                                             ValueChanged="PreviewSlider_ValueChanged"/>
 
                                     <Grid Margin="0,11,0,0"><TextBlock Text="По вертикали" Style="{StaticResource FieldLabel}"/><TextBlock x:Name="OffsetYValueText" Style="{StaticResource ValueLabel}"/></Grid>
-                                    <Slider x:Name="OffsetYSlider" Minimum="-1000" Maximum="1000" TickFrequency="1"
-                                            Style="{StaticResource ModernSlider}" ValueChanged="PreviewSlider_ValueChanged"/>
+                                    <controls:NumericStepper x:Name="OffsetYSlider" Minimum="-1000" Maximum="1000" Step="1"
+                                                             ValueChanged="PreviewSlider_ValueChanged"/>
 
                                     <Button Content="Сбросить область просмотра" Style="{StaticResource EditorButton}"
                                             HorizontalAlignment="Stretch" Margin="0,13,0,0" Click="ResetViewport_Click"/>
@@ -430,8 +429,8 @@
                                         </Button>
                                     </Grid>
                                     <Grid><TextBlock Text="Прозрачность содержимого" Style="{StaticResource FieldLabel}"/><TextBlock x:Name="OpacityValueText" Style="{StaticResource ValueLabel}"/></Grid>
-                                    <Slider x:Name="ContentOpacitySlider" Minimum="20" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True"
-                                            Style="{StaticResource ModernSlider}" ValueChanged="PreviewSlider_ValueChanged"/>
+                                    <controls:NumericStepper x:Name="ContentOpacitySlider" Minimum="20" Maximum="100" Step="5"
+                                                             ValueChanged="PreviewSlider_ValueChanged"/>
                                     <CheckBox x:Name="ShowTitleCheckBox" Content="Показывать название поверх содержимого" Margin="0,14,0,0"
                                               Style="{StaticResource ToggleSwitch}" IsChecked="{Binding WidgetShowTitle, Mode=TwoWay}"/>
                                 </StackPanel>

@@ -21,6 +21,8 @@ public sealed class LauncherSettings
     public double GridSpacing { get; set; } = 6;
     public string? WindowBackgroundColor { get; set; }
     public string? TileColor { get; set; }
+    public string? PositiveActionColor { get; set; }
+    public string? NegativeActionColor { get; set; }
     public ObservableCollection<string> SavedColors { get; set; } = new();
     public double? TileOpacity { get; set; }
     public bool TileShadowEnabled { get; set; }

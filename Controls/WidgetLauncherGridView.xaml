@@ -170,7 +170,7 @@
                 </Grid.ColumnDefinitions>
                 <Button x:Name="FolderBackButton" Width="28" Height="26" Padding="0"
                         Background="Transparent" BorderThickness="0" Cursor="Hand"
-                        Foreground="{DynamicResource TextBrush}" ToolTip="Назад к содержимому виджета"
+                        Foreground="{DynamicResource PositiveSolidBrush}" ToolTip="Назад к содержимому виджета"
                         Click="FolderBack_Click">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">

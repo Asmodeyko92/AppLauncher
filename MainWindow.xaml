@@ -602,7 +602,7 @@
                                                 <MenuItem.Header><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8DE;" Width="27" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"/><TextBlock Text="На главный экран"/></StackPanel></MenuItem.Header>
                                             </MenuItem>
                                             <Separator/>
-                                            <MenuItem Style="{StaticResource ModernMenuItem}" Foreground="#FF667A" Click="RemoveItem_Click">
+                                            <MenuItem Style="{StaticResource ModernMenuItem}" Foreground="{DynamicResource NegativeSolidBrush}" Click="RemoveItem_Click">
                                                 <MenuItem.Header><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE74D;" Width="27" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"/><TextBlock Text="Убрать из AppLauncher"/></StackPanel></MenuItem.Header>
                                             </MenuItem>
                                         </ContextMenu>
@@ -818,7 +818,7 @@
                                         <Button Grid.Column="1" Style="{StaticResource ColorChoiceButton}" Click="ChooseWindowColor_Click"><StackPanel Orientation="Horizontal"><Border x:Name="WindowColorSwatch" Width="18" Height="18" CornerRadius="5" Margin="0,0,8,0" BorderBrush="{DynamicResource ColorSwatchBorderBrush}" BorderThickness="1.5"/><TextBlock Text="Выбрать" VerticalAlignment="Center"/></StackPanel></Button>
                                     </Grid>
                                     <Grid Margin="0,15,0,0"><TextBlock Text="Прозрачность окна" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="WindowOpacityValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="WindowOpacitySlider" Margin="0,5,0,0" Minimum="45" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="WindowOpacityChanged"/>
+                                    <controls:NumericStepper x:Name="WindowOpacitySlider" Margin="0,5,0,0" Minimum="45" Maximum="100" Step="5" ValueChanged="WindowOpacityChanged"/>
 
                                     <Border Height="1" Margin="0,18,0,15" Background="{DynamicResource WindowBorderBrush}"/>
                                     <TextBlock Text="Плитки" Style="{StaticResource SettingsSubsectionTitle}"/>
@@ -828,19 +828,31 @@
                                         <Button Grid.Column="1" Style="{StaticResource ColorChoiceButton}" Click="ChooseTileColor_Click"><StackPanel Orientation="Horizontal"><Border x:Name="TileColorSwatch" Width="18" Height="18" CornerRadius="5" Margin="0,0,8,0" BorderBrush="{DynamicResource ColorSwatchBorderBrush}" BorderThickness="1.5"/><TextBlock Text="Выбрать" VerticalAlignment="Center"/></StackPanel></Button>
                                     </Grid>
                                     <Grid Margin="0,15,0,0"><TextBlock Text="Прозрачность плиток" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="TileOpacityValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="TileOpacitySlider" Margin="0,5,0,0" Minimum="5" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="TileAppearanceChanged"/>
+                                    <controls:NumericStepper x:Name="TileOpacitySlider" Margin="0,5,0,0" Minimum="5" Maximum="100" Step="5" ValueChanged="TileAppearanceChanged"/>
                                     <CheckBox x:Name="TileShadowCheckBox" Margin="0,17,0,0" Style="{StaticResource ToggleSwitch}" Content="Отбрасывать тень" Checked="TileShadowChanged" Unchecked="TileShadowChanged"/>
                                     <Grid Margin="0,15,0,0"><TextBlock Text="Интенсивность тени" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="TileShadowOpacityValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="TileShadowOpacitySlider" Margin="0,5,0,0" Minimum="10" Maximum="70" TickFrequency="5" IsSnapToTickEnabled="True" IsEnabled="{Binding IsChecked, ElementName=TileShadowCheckBox}" Style="{StaticResource ModernSlider}" ValueChanged="TileShadowOpacityChanged"/>
+                                    <controls:NumericStepper x:Name="TileShadowOpacitySlider" Margin="0,5,0,0" Minimum="10" Maximum="70" Step="5" IsEnabled="{Binding IsChecked, ElementName=TileShadowCheckBox}" ValueChanged="TileShadowOpacityChanged"/>
 
                                     <Border Height="1" Margin="0,18,0,15" Background="{DynamicResource WindowBorderBrush}"/>
                                     <TextBlock Text="Значки и сетка" Style="{StaticResource SettingsSubsectionTitle}"/>
                                     <Grid><TextBlock Text="Размер значка" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="IconSizeValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="IconSizeSlider" Margin="0,5,0,0" Minimum="36" Maximum="82" TickFrequency="2" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="LayoutMetricsChanged"/>
+                                    <controls:NumericStepper x:Name="IconSizeSlider" Margin="0,5,0,0" Minimum="36" Maximum="82" Step="2" ValueChanged="LayoutMetricsChanged"/>
                                     <Grid Margin="0,15,0,0"><TextBlock Text="Размер плитки" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="TileSizeValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="TileSizeSlider" Margin="0,5,0,0" Minimum="100" Maximum="170" TickFrequency="2" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="LayoutMetricsChanged"/>
+                                    <controls:NumericStepper x:Name="TileSizeSlider" Margin="0,5,0,0" Minimum="100" Maximum="170" Step="2" ValueChanged="LayoutMetricsChanged"/>
                                     <Grid Margin="0,15,0,0"><TextBlock Text="Расстояние в сетке" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="GridSpacingValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="GridSpacingSlider" Margin="0,5,0,0" Minimum="2" Maximum="20" TickFrequency="2" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="LayoutMetricsChanged"/>
+                                    <controls:NumericStepper x:Name="GridSpacingSlider" Margin="0,5,0,0" Minimum="2" Maximum="20" Step="2" ValueChanged="LayoutMetricsChanged"/>
+                                    <Border Height="1" Margin="0,18,0,15" Background="{DynamicResource WindowBorderBrush}"/>
+                                    <TextBlock Text="Цвета действий" Style="{StaticResource SettingsSubsectionTitle}"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center"><TextBlock Text="Позитивные действия" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="PositiveActionColorValueText" Margin="0,3,0,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="11"/></StackPanel>
+                                        <Button Grid.Column="1" Style="{StaticResource ColorChoiceButton}" Click="ChoosePositiveActionColor_Click"><StackPanel Orientation="Horizontal"><Border x:Name="PositiveActionColorSwatch" Width="18" Height="18" CornerRadius="5" Margin="0,0,8,0" BorderBrush="{DynamicResource ColorSwatchBorderBrush}" BorderThickness="1.5"/><TextBlock Text="Выбрать" VerticalAlignment="Center"/></StackPanel></Button>
+                                    </Grid>
+                                    <Grid Margin="0,13,0,0">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center"><TextBlock Text="Негативные действия" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="NegativeActionColorValueText" Margin="0,3,0,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="11"/></StackPanel>
+                                        <Button Grid.Column="1" Style="{StaticResource ColorChoiceButton}" Click="ChooseNegativeActionColor_Click"><StackPanel Orientation="Horizontal"><Border x:Name="NegativeActionColorSwatch" Width="18" Height="18" CornerRadius="5" Margin="0,0,8,0" BorderBrush="{DynamicResource ColorSwatchBorderBrush}" BorderThickness="1.5"/><TextBlock Text="Выбрать" VerticalAlignment="Center"/></StackPanel></Button>
+                                    </Grid>
                                     <Button Margin="0,17,0,0" Height="38" Style="{StaticResource SecondaryActionButton}" Content="Сбросить оформление" Click="ResetAppearance_Click"/>
                                 </StackPanel>
                             </Expander>
@@ -852,7 +864,7 @@
                                     <CheckBox x:Name="FolderThumbnailsCheckBox" Style="{StaticResource ToggleSwitch}" Content="Миниатюры вместо значка" Checked="FolderThumbnailSettingChanged" Unchecked="FolderThumbnailSettingChanged"/>
                                     <TextBlock Text="Показывать четыре наиболее часто запускаемых приложения из группы" Margin="0,7,54,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
                                     <Grid Margin="0,16,0,0"><TextBlock Text="Размер миниатюр" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="FolderThumbnailSizeValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="FolderThumbnailSizeSlider" Margin="0,5,0,0" Minimum="55" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" IsEnabled="{Binding IsChecked, ElementName=FolderThumbnailsCheckBox}" Style="{StaticResource ModernSlider}" ValueChanged="FolderThumbnailSizeChanged"/>
+                                    <controls:NumericStepper x:Name="FolderThumbnailSizeSlider" Margin="0,5,0,0" Minimum="55" Maximum="100" Step="5" IsEnabled="{Binding IsChecked, ElementName=FolderThumbnailsCheckBox}" ValueChanged="FolderThumbnailSizeChanged"/>
                                     <TextBlock Text="Размер значков внутри каждого виджета настраивается в его редакторе" Margin="0,14,0,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Expander>
@@ -879,9 +891,9 @@
                                 <Expander.Header><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Text="&#xE737;" Foreground="{DynamicResource AccentSolidBrush}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="17" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Окно" FontWeight="SemiBold"/><TextBlock Text="Размер рабочей области" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" Margin="0,2,0,0"/></StackPanel></Grid></Expander.Header>
                                 <StackPanel>
                                     <Grid><TextBlock Text="Ширина" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="WindowWidthValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="WindowWidthSlider" Margin="0,5,0,0" Minimum="760" Maximum="1400" TickFrequency="20" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="WindowMetricsChanged"/>
+                                    <controls:NumericStepper x:Name="WindowWidthSlider" Margin="0,5,0,0" Minimum="760" Maximum="1400" Step="20" ValueChanged="WindowMetricsChanged"/>
                                     <Grid Margin="0,15,0,0"><TextBlock Text="Высота" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="WindowHeightValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="WindowHeightSlider" Margin="0,5,0,0" Minimum="500" Maximum="950" TickFrequency="10" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="WindowMetricsChanged"/>
+                                    <controls:NumericStepper x:Name="WindowHeightSlider" Margin="0,5,0,0" Minimum="500" Maximum="950" Step="10" ValueChanged="WindowMetricsChanged"/>
                                 </StackPanel>
                             </Expander>
 
@@ -909,7 +921,7 @@
                             </Grid>
                         </Border>
                         <Button Grid.Row="1" Height="42" Padding="13,0" Style="{StaticResource SecondaryActionButton}"
-                                Foreground="#FF6B7D" Content="Скрыть AppLauncher в трей" Click="CloseButton_Click"/>
+                                Foreground="{DynamicResource NegativeSolidBrush}" Content="Скрыть AppLauncher в трей" Click="CloseButton_Click"/>
                     </Grid>
                 </Grid>
             </Border>

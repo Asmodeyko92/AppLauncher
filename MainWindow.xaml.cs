@@ -2744,6 +2744,34 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         SaveLayout();
     }
 
+    private void ChoosePositiveActionColor_Click(object sender, RoutedEventArgs e)
+    {
+        var selected = ColorPickerDialog.Show(this, "Позитивные действия", EffectivePositiveActionColor, _settings.SavedColors);
+        if (selected is null)
+        {
+            SaveLayout();
+            return;
+        }
+
+        _settings.PositiveActionColor = selected;
+        ApplyTheme(_settings.LightTheme);
+        SaveLayout();
+    }
+
+    private void ChooseNegativeActionColor_Click(object sender, RoutedEventArgs e)
+    {
+        var selected = ColorPickerDialog.Show(this, "Негативные действия", EffectiveNegativeActionColor, _settings.SavedColors);
+        if (selected is null)
+        {
+            SaveLayout();
+            return;
+        }
+
+        _settings.NegativeActionColor = selected;
+        ApplyTheme(_settings.LightTheme);
+        SaveLayout();
+    }
+
     private void TileAppearanceChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_initializing)
@@ -2791,6 +2819,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         _settings.WindowBackgroundColor = null;
         _settings.TileColor = null;
+        _settings.PositiveActionColor = null;
+        _settings.NegativeActionColor = null;
         _settings.TileOpacity = null;
         _settings.WindowOpacity = 1.0;
         _settings.TileShadowEnabled = true;
@@ -2892,6 +2922,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             Color.FromRgb(62, 126, 255),
             new Point(0, 0),
             new Point(1, 1));
+        Resources["PositiveSolidBrush"] = Brush(EffectivePositiveActionColor);
+        Resources["PositiveBrush"] = new LinearGradientBrush(
+            (Color)ColorConverter.ConvertFromString(EffectivePositiveActionColor)!,
+            Color.FromRgb(55, 183, 126),
+            new Point(0, 0),
+            new Point(1, 1));
+        Resources["NegativeSolidBrush"] = Brush(EffectiveNegativeActionColor);
         UpdateTileShadowEffect();
         UpdateAppearanceLabels();
         UpdatePinButton();
@@ -2910,6 +2947,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string EffectiveTileColor
         => NormalizeColor(_settings.TileColor, "#FFFFFF");
 
+    private string EffectivePositiveActionColor
+        => NormalizeColor(_settings.PositiveActionColor, "#27B878");
+
+    private string EffectiveNegativeActionColor
+        => NormalizeColor(_settings.NegativeActionColor, "#E25662");
+
     private double EffectiveTileOpacity
         => Math.Clamp(_settings.TileOpacity ?? (_settings.LightTheme ? 1.0 : 0.10), 0.05, 1.0);
 
@@ -2926,8 +2969,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         TileOpacityValueText.Text = $"{EffectiveTileOpacity * 100:0}%";
         WindowOpacityValueText.Text = $"{_settings.WindowOpacity * 100:0}%";
         TileShadowOpacityValueText.Text = $"{_settings.TileShadowOpacity * 100:0}%";
+        PositiveActionColorValueText.Text = EffectivePositiveActionColor;
+        NegativeActionColorValueText.Text = EffectiveNegativeActionColor;
         WindowColorSwatch.Background = Brush(EffectiveWindowColor);
         TileColorSwatch.Background = Brush(EffectiveTileColor);
+        PositiveActionColorSwatch.Background = Brush(EffectivePositiveActionColor);
+        NegativeActionColorSwatch.Background = Brush(EffectiveNegativeActionColor);
     }
 
     private void UpdateTileShadowEffect()
