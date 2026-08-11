@@ -99,7 +99,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public string AppVersion => typeof(MainWindow).Assembly
         .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
         .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
-        .FirstOrDefault()?.InformationalVersion ?? "1.9.1 Beta";
+        .FirstOrDefault()?.InformationalVersion ?? "1.9.13 Beta";
     public Thickness TileMargin => new(_settings.GridSpacing / 2);
     public Effect? TileShadowEffect { get; private set; }
 
@@ -580,6 +580,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         StopPageAnimation();
         ++_pageSnapshotGeneration;
+        _lastPageDirection = targetPage > _currentPage ? 1 : -1;
 
         if (_pageSnapshotCache.TryGetValue(targetPage, out var snapshot))
         {
@@ -1964,10 +1965,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             .Skip(Math.Min(regularItems.Count, remainingSlots))
             .ToList();
 
+        var nextPageFirstItem = _pages
+            .Skip(_currentPage + 1)
+            .SelectMany(page => page.Items)
+            .FirstOrDefault(item => !item.IsWidget);
+        var insertionIndex = nextPageFirstItem is null
+            ? _settings.Items.Count
+            : _settings.Items.IndexOf(nextPageFirstItem);
+
         foreach (var item in displacedItems)
             _settings.Items.Remove(item);
         foreach (var item in displacedItems)
-            _settings.Items.Add(item);
+            _settings.Items.Insert(Math.Min(insertionIndex++, _settings.Items.Count), item);
 
         return displacedItems.Count;
     }

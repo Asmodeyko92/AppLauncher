@@ -56,6 +56,8 @@ public partial class WidgetLauncherGridView : UserControl
 
     private void FolderBack_Click(object sender, RoutedEventArgs e)
     {
+        if (_folderStack.Count == 0)
+            return;
         _folderStack.Pop();
         ShowCurrentFolder();
     }
