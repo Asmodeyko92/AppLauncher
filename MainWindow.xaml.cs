@@ -934,10 +934,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void Window_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        // Колесо перелистывает страницы в любой точке основного окна — над
-        // плитками, пустым местом, поиском или нижней панелью. При открытых
-        // настройках событие остаётся свободным для вертикального ScrollViewer.
-        if (SettingsPanel.Visibility == Visibility.Visible
+        // Панель настроек не модальна: её собственный ScrollViewer и числовые
+        // поля получают колесо только под курсором, а остальная страница остаётся
+        // доступной для навигации.
+        if (SettingsPanel.IsAncestorOf(e.OriginalSource as DependencyObject)
             || FolderFlyoutLayer.Visibility == Visibility.Visible
             || FindVisualAncestor<WidgetLauncherGridView>(e.OriginalSource as DependencyObject) is not null
             || _pageCount <= 1)

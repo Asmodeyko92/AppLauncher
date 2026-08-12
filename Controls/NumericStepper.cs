@@ -75,6 +75,15 @@ public sealed class NumericStepper : Control
         }
     }
 
+    protected override void OnPreviewMouseWheel(MouseWheelEventArgs e)
+    {
+        if (!IsEnabled || e.Delta == 0)
+            return;
+
+        ChangeValue(e.Delta > 0 ? Step : -Step);
+        e.Handled = true;
+    }
+
     private void ChangeValue(double delta) => Value += delta;
 
     private void CommitText(TextBox valueBox)
