@@ -1,0 +1,9 @@
+{
+  "id": "com.applauncher.download-manager",
+  "name": "Download Manager",
+  "version": "1.0.0",
+  "description": "Компактная локальная панель загрузок с демо-очередью и прогрессом.",
+  "contentFile": "index.html",
+  "defaultRows": 2,
+  "defaultColumns": 4
+}

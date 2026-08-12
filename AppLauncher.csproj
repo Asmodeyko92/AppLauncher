@@ -11,10 +11,10 @@
     <AssemblyName>AppLauncher</AssemblyName>
     <RootNamespace>AppLauncher</RootNamespace>
     <ApplicationIcon>Assets\AppLauncher.ico</ApplicationIcon>
-    <Version>1.9.20-beta</Version>
-    <AssemblyVersion>1.9.20.0</AssemblyVersion>
-    <FileVersion>1.9.20.0</FileVersion>
-    <InformationalVersion>1.9.20 Beta</InformationalVersion>
+    <Version>1.9.21-beta</Version>
+    <AssemblyVersion>1.9.21.0</AssemblyVersion>
+    <FileVersion>1.9.21.0</FileVersion>
+    <InformationalVersion>1.9.21 Beta</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Company>Serhii</Company>
     <Product>AppLauncher</Product>
@@ -22,5 +22,10 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4078.44" />
+  </ItemGroup>
+  <ItemGroup>
+  <Content Include="PluginTemplates\**\*">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </Content>
   </ItemGroup>
 </Project>

@@ -13,6 +13,20 @@ public static class PluginLibraryService
         "AppLauncher",
         "Plugins");
 
+    public static void InstallBuiltInExamples()
+    {
+        var templatesPath = Path.Combine(AppContext.BaseDirectory, "PluginTemplates");
+        foreach (var id in new[] { "clock-widget", "download-manager-widget" })
+        {
+            var source = Path.Combine(templatesPath, id);
+            var destination = Path.Combine(LibraryPath, id);
+            if (!Directory.Exists(source) || Directory.Exists(destination))
+                continue;
+
+            CopyDirectory(source, destination);
+        }
+    }
+
     public static void Refresh(ObservableCollection<PluginLibraryEntry> library)
     {
         Directory.CreateDirectory(LibraryPath);
@@ -47,8 +61,13 @@ public static class PluginLibraryService
                 Version = string.IsNullOrWhiteSpace(manifest.Version) ? "0.1.0" : manifest.Version.Trim(),
                 Description = manifest.Description?.Trim() ?? "Плагин AppLauncher",
                 DirectoryPath = Path.GetDirectoryName(manifestPath)!,
+                ContentFile = manifest.ContentFile?.Trim() ?? string.Empty,
+                DefaultRows = Math.Clamp(manifest.DefaultRows, 1, 12),
+                DefaultColumns = Math.Clamp(manifest.DefaultColumns, 1, 12),
                 IsEnabled = !enabledById.TryGetValue(manifest.Id, out var enabled) || enabled,
-                IsValid = true
+                IsValid = true,
+                IsInstalled = !string.IsNullOrWhiteSpace(manifest.ContentFile)
+                    && File.Exists(Path.Combine(Path.GetDirectoryName(manifestPath)!, manifest.ContentFile))
             };
         }
         catch (JsonException)
@@ -66,11 +85,23 @@ public static class PluginLibraryService
         }
     }
 
+    private static void CopyDirectory(string source, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        foreach (var file in Directory.EnumerateFiles(source))
+            File.Copy(file, Path.Combine(destination, Path.GetFileName(file)), true);
+        foreach (var directory in Directory.EnumerateDirectories(source))
+            CopyDirectory(directory, Path.Combine(destination, Path.GetFileName(directory)));
+    }
+
     private sealed class PluginManifest
     {
         public string Id { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string? Version { get; set; }
         public string? Description { get; set; }
+        public string? ContentFile { get; set; }
+        public int DefaultRows { get; set; } = 2;
+        public int DefaultColumns { get; set; } = 2;
     }
 }

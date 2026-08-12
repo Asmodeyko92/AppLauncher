@@ -160,6 +160,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _settings = LayoutStore.Load();
         _settings.SavedColors ??= new ObservableCollection<string>();
         _settings.PluginLibrary ??= new ObservableCollection<PluginLibraryEntry>();
+        PluginLibraryService.InstallBuiltInExamples();
         PluginLibraryService.Refresh(_settings.PluginLibrary);
         PreserveLegacyWidgetBackgrounds(_settings.Items);
         UpgradeVisualDefaults();
@@ -2747,6 +2748,45 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         entry.IsEnabled = ((CheckBox)sender).IsChecked == true;
         SaveLayout();
+    }
+
+    private void AddPluginWidget_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: PluginLibraryEntry plugin }
+            || !plugin.IsEnabled
+            || !plugin.IsInstalled
+            || _currentFolder is not null
+            || !string.IsNullOrWhiteSpace(SearchBox.Text))
+            return;
+
+        var (availableColumns, availableRows) = GetGridDimensions();
+        var columns = Math.Min(plugin.DefaultColumns, availableColumns);
+        var rows = Math.Min(plugin.DefaultRows, availableRows);
+        var contentPath = Path.Combine(plugin.DirectoryPath, plugin.ContentFile);
+        if (!File.Exists(contentPath))
+        {
+            ShowToast("Файл плагина не найден. Обновите библиотеку.");
+            return;
+        }
+
+        var widget = new LauncherItem
+        {
+            Kind = LauncherItemKind.Widget,
+            Name = plugin.Name,
+            WidgetRows = rows,
+            WidgetColumns = columns,
+            WidgetPage = _currentPage,
+            WidgetColumn = 0,
+            WidgetRow = 0,
+            WidgetContentType = WidgetContentKind.WebPage,
+            WidgetUrl = new Uri(contentPath).AbsoluteUri,
+            WidgetShowTitle = true
+        };
+        UpdateDisplayMetrics(widget);
+        _settings.Items.Add(widget);
+        SaveAndRefresh();
+        NavigateToPage(FindPageForItem(widget.Id));
+        ShowToast($"Добавлен виджет «{plugin.Name}»");
     }
 
     private void WidgetBackgroundSettingChanged(object sender, RoutedEventArgs e)

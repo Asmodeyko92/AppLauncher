@@ -1057,6 +1057,19 @@
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="1" Margin="10,0,0,0">
                                                             <TextBlock Text="{Binding Version}" HorizontalAlignment="Right" FontSize="10.5" Foreground="{DynamicResource MutedTextBrush}"/>
+                                                            <Button Margin="0,7,0,0" Height="28" Padding="9,0"
+                                                                    Content="Добавить" Click="AddPluginWidget_Click">
+                                                                <Button.Style>
+                                                                    <Style TargetType="Button" BasedOn="{StaticResource SecondaryActionButton}">
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsInstalled}" Value="False">
+                                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                                                <Setter Property="ToolTip" Value="Для этого плагина не найден файл виджета"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Button.Style>
+                                                            </Button>
                                                             <CheckBox Margin="0,7,0,0" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding IsEnabled}"
                                                                       Checked="PluginEnabledChanged" Unchecked="PluginEnabledChanged"/>
                                                         </StackPanel>
