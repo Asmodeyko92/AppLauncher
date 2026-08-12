@@ -11,10 +11,10 @@
     <AssemblyName>AppLauncher</AssemblyName>
     <RootNamespace>AppLauncher</RootNamespace>
     <ApplicationIcon>Assets\AppLauncher.ico</ApplicationIcon>
-    <Version>1.9.21-beta</Version>
-    <AssemblyVersion>1.9.21.0</AssemblyVersion>
-    <FileVersion>1.9.21.0</FileVersion>
-    <InformationalVersion>1.9.21 Beta</InformationalVersion>
+    <Version>1.9.22-beta</Version>
+    <AssemblyVersion>1.9.22.0</AssemblyVersion>
+    <FileVersion>1.9.22.0</FileVersion>
+    <InformationalVersion>1.9.22 Beta</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Company>Serhii</Company>
     <Product>AppLauncher</Product>

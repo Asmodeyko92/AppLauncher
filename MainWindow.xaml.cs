@@ -1051,6 +1051,21 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_currentFolder is not null || !string.IsNullOrWhiteSpace(SearchBox.Text))
             return;
 
+        if (!WidgetGalleryDialog.TryPick(this, _settings.PluginLibrary, out var plugin, out var createBlank))
+            return;
+
+        if (plugin is not null)
+        {
+            AddPluginWidget(plugin);
+            return;
+        }
+
+        if (createBlank)
+            AddBlankWidget();
+    }
+
+    private void AddBlankWidget()
+    {
         var (availableColumns, availableRows) = GetGridDimensions();
         if (!WidgetSizePickerDialog.TryPick(
                 this,
@@ -2752,8 +2767,15 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void AddPluginWidget_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button { DataContext: PluginLibraryEntry plugin }
-            || !plugin.IsEnabled
+        if (sender is not Button { DataContext: PluginLibraryEntry plugin })
+            return;
+
+        AddPluginWidget(plugin);
+    }
+
+    private void AddPluginWidget(PluginLibraryEntry plugin)
+    {
+        if (!plugin.IsEnabled
             || !plugin.IsInstalled
             || _currentFolder is not null
             || !string.IsNullOrWhiteSpace(SearchBox.Text))

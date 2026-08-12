@@ -13,4 +13,5 @@ public sealed class PluginLibraryEntry
     public bool IsEnabled { get; set; } = true;
     public bool IsValid { get; set; }
     public bool IsInstalled { get; set; }
+    public string SizeLabel => $"Размер: {DefaultRows} × {DefaultColumns}";
 }
