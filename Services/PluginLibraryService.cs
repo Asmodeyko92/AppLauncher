@@ -8,6 +8,11 @@ namespace AppLauncher.Services;
 
 public static class PluginLibraryService
 {
+    private static readonly JsonSerializerOptions ManifestJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     public static readonly string LibraryPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "AppLauncher",
@@ -50,7 +55,9 @@ public static class PluginLibraryService
     {
         try
         {
-            var manifest = JsonSerializer.Deserialize<PluginManifest>(File.ReadAllText(manifestPath));
+            var manifest = JsonSerializer.Deserialize<PluginManifest>(
+                File.ReadAllText(manifestPath),
+                ManifestJsonOptions);
             if (manifest is null || string.IsNullOrWhiteSpace(manifest.Id) || string.IsNullOrWhiteSpace(manifest.Name))
                 return null;
 
