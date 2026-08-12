@@ -23,6 +23,83 @@
         <conv:HexColorBrushConverter x:Key="HexColorBrushConverter"/>
         <conv:WidgetBackgroundBrushConverter x:Key="WidgetBackgroundBrushConverter"/>
 
+        <Style x:Key="PremiumComboBoxItem" TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Padding" Value="13,10"/>
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="Surface" Margin="4,2" Padding="{TemplateBinding Padding}" CornerRadius="8">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource HoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource AccentSolidBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="PremiumComboBox" TargetType="ComboBox">
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SearchBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource TileBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource PremiumComboBoxItem}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton Focusable="False" ClickMode="Press"
+                                          IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          Background="Transparent" BorderThickness="0">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="Surface" Background="{Binding Background, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                BorderThickness="1" CornerRadius="10">
+                                            <TextBlock Text="&#xE70D;" HorizontalAlignment="Right" Margin="0,0,14,0"
+                                                       VerticalAlignment="Center" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                       FontSize="11" Foreground="{DynamicResource MutedTextBrush}"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource TileHoverBrush}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource AccentSolidBrush}"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter Margin="14,0,42,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                              Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
+                            <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom"
+                                   AllowsTransparency="True" PopupAnimation="Fade" Focusable="False">
+                                <Border Margin="0,6,0,0" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                        Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource TileBorderBrush}"
+                                        BorderThickness="1" CornerRadius="12" Padding="4">
+                                    <Border.Effect><DropShadowEffect Color="#05070C" BlurRadius="22" ShadowDepth="5" Opacity="0.48"/></Border.Effect>
+                                    <ScrollViewer MaxHeight="240" CanContentScroll="True">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Безопасные части визуала группы: без ContentControl и циклов логического дерева. -->
         <Style x:Key="LauncherSingleIconStyle" TargetType="Image">
             <Setter Property="Visibility" Value="Visible"/>
@@ -745,10 +822,13 @@
                                         ToolTip="Закрыть группу" Click="CloseFolderFlyout_Click"/>
                             </Grid>
                             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                                          PanningMode="VerticalOnly">
+                                          PanningMode="VerticalOnly"
+                                          PreviewMouseWheel="FolderFlyoutScrollViewer_PreviewMouseWheel">
                                 <ItemsControl ItemsSource="{Binding FolderFlyoutItems}">
                                     <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                        <ItemsPanelTemplate>
+                                           <UniformGrid Columns="{Binding FolderFlyoutColumns, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                        </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
@@ -889,7 +969,7 @@
                                     <TextBlock Text="Оформление" Style="{StaticResource SettingsSubsectionTitle}"/>
                                     <CheckBox x:Name="LightThemeCheckBox" Style="{StaticResource ToggleSwitch}" Content="Светлая тема" Checked="ThemeChanged" Unchecked="ThemeChanged"/>
                                     <TextBlock Text="Визуальный профиль" Margin="0,17,0,0" Foreground="{DynamicResource TextBrush}"/>
-                                    <ComboBox x:Name="VisualProfileCombo" Margin="0,6,0,0" Height="38"
+                                    <ComboBox x:Name="VisualProfileCombo" Style="{StaticResource PremiumComboBox}" Margin="0,6,0,0"
                                               SelectedValuePath="Tag" SelectionChanged="VisualProfileChanged">
                                         <ComboBoxItem Tag="Glass" Content="Стекло - объём и мягкое свечение"/>
                                         <ComboBoxItem Tag="Soft" Content="Мягкий - спокойные поверхности"/>
@@ -960,6 +1040,37 @@
                                     <Grid Margin="0,16,0,0"><TextBlock Text="Размер миниатюр" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="FolderThumbnailSizeValueText" Style="{StaticResource SettingsValueText}"/></Grid>
                                     <controls:NumericStepper x:Name="FolderThumbnailSizeSlider" Margin="0,5,0,0" Minimum="55" Maximum="100" Step="5" IsEnabled="{Binding IsChecked, ElementName=FolderThumbnailsCheckBox}" ValueChanged="FolderThumbnailSizeChanged"/>
                                     <TextBlock Text="Размер значков внутри каждого виджета настраивается в его редакторе" Margin="0,14,0,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
+                                    <Border Height="1" Margin="0,18,0,15" Background="{DynamicResource WindowBorderBrush}"/>
+                                    <TextBlock Text="Библиотека плагинов" Style="{StaticResource SettingsSubsectionTitle}"/>
+                                    <TextBlock Text="Плагины добавляются отдельными папками с файлом plugin.json. Они не запускаются, пока не будет добавлен их поддерживаемый тип."
+                                               Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
+                                    <ItemsControl ItemsSource="{Binding PluginLibrary}" Margin="0,10,0,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Padding="10" Margin="0,0,0,7" CornerRadius="9"
+                                                        Background="{DynamicResource SearchBrush}" BorderBrush="{DynamicResource TileBorderBrush}" BorderThickness="1">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                                            <TextBlock Text="{Binding Description}" Margin="0,3,0,0" FontSize="10.5" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                                            <TextBlock Text="{Binding Version}" HorizontalAlignment="Right" FontSize="10.5" Foreground="{DynamicResource MutedTextBrush}"/>
+                                                            <CheckBox Margin="0,7,0,0" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding IsEnabled}"
+                                                                      Checked="PluginEnabledChanged" Unchecked="PluginEnabledChanged"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock x:Name="PluginLibraryEmptyText" Margin="0,4,0,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5"
+                                               Text="Библиотека пуста. Откройте папку и добавьте первый плагин."/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                        <Button Height="38" Padding="12,0" Style="{StaticResource SecondaryActionButton}" Content="Открыть папку" Click="OpenPluginLibrary_Click"/>
+                                        <Button Width="108" Height="38" Margin="8,0,0,0" Padding="10,0" Style="{StaticResource SecondaryActionButton}" Content="Обновить" Click="RefreshPluginLibrary_Click"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Expander>
 

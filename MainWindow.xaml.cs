@@ -88,6 +88,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public ObservableCollection<LauncherItem> DisplayItems { get; } = new();
     public ObservableCollection<LauncherItem> IncomingPageItems { get; } = new();
     public ObservableCollection<LauncherItem> FolderFlyoutItems { get; } = new();
+    public ObservableCollection<PluginLibraryEntry> PluginLibrary => _settings.PluginLibrary;
+    public int FolderFlyoutColumns { get; private set; } = 1;
     public double TileSize => _settings.TileSize;
     public double TileHeight => _settings.TileSize + 8;
     public double GridCellWidth => TileSize + _settings.GridSpacing;
@@ -157,6 +159,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         _settings = LayoutStore.Load();
         _settings.SavedColors ??= new ObservableCollection<string>();
+        _settings.PluginLibrary ??= new ObservableCollection<PluginLibraryEntry>();
+        PluginLibraryService.Refresh(_settings.PluginLibrary);
         PreserveLegacyWidgetBackgrounds(_settings.Items);
         UpgradeVisualDefaults();
         InitializeComponent();
@@ -204,6 +208,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         Opacity = _settings.WindowOpacity;
         Topmost = _settings.AlwaysOnTop;
         ApplyTheme(_settings.LightTheme);
+        PluginLibraryEmptyText.Visibility = _settings.PluginLibrary.Count == 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         UpdateHotkeyUi();
         UpdateMetricLabels();
 
@@ -931,6 +938,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         // плитками, пустым местом, поиском или нижней панелью. При открытых
         // настройках событие остаётся свободным для вертикального ScrollViewer.
         if (SettingsPanel.Visibility == Visibility.Visible
+            || FolderFlyoutLayer.Visibility == Visibility.Visible
             || FindVisualAncestor<WidgetLauncherGridView>(e.OriginalSource as DependencyObject) is not null
             || _pageCount <= 1)
             return;
@@ -1217,13 +1225,17 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             FolderFlyoutItems.Add(item);
         }
 
-        var maxWidth = Math.Max(GridCellWidth, PageViewport.ActualWidth * 0.8);
-        var maxHeight = Math.Max(GridCellHeight, PageViewport.ActualHeight * 0.8);
-        var maxColumns = Math.Max(1, (int)Math.Floor(maxWidth / GridCellWidth));
+        const double panelPadding = 24;
+        const double headerHeight = 42;
+        var maxWidth = Math.Max(GridCellWidth + panelPadding, PageViewport.ActualWidth * 0.8);
+        var maxHeight = Math.Max(GridCellHeight + headerHeight + panelPadding, PageViewport.ActualHeight * 0.8);
+        var maxColumns = Math.Max(1, (int)Math.Floor((maxWidth - panelPadding) / GridCellWidth));
         var columns = Math.Min(maxColumns, Math.Max(1, (int)Math.Ceiling(Math.Sqrt(FolderFlyoutItems.Count))));
         var rows = Math.Max(1, (int)Math.Ceiling(FolderFlyoutItems.Count / (double)columns));
-        FolderFlyoutPanel.Width = Math.Min(maxWidth, columns * GridCellWidth + 24);
-        FolderFlyoutPanel.Height = Math.Min(maxHeight, rows * GridCellHeight + 66);
+        FolderFlyoutColumns = columns;
+        OnPropertyChanged(nameof(FolderFlyoutColumns));
+        FolderFlyoutPanel.Width = Math.Min(maxWidth, columns * GridCellWidth + panelPadding);
+        FolderFlyoutPanel.Height = Math.Min(maxHeight, rows * GridCellHeight + headerHeight + panelPadding);
         FolderFlyoutTitle.Text = $"{folder.Name} · {FolderFlyoutItems.Count}";
         FolderFlyoutLayer.Visibility = Visibility.Visible;
     }
@@ -1236,6 +1248,15 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
 
     private void CloseFolderFlyout_Click(object sender, RoutedEventArgs e) => CloseFolderFlyout();
+
+    private void FolderFlyoutScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is not ScrollViewer scrollViewer)
+            return;
+
+        scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - e.Delta);
+        e.Handled = true;
+    }
 
     private void FolderFlyoutTile_Click(object sender, RoutedEventArgs e)
     {
@@ -2697,6 +2718,34 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         _settings.UseFolderThumbnails = FolderThumbnailsCheckBox.IsChecked == true;
         OnPropertyChanged(nameof(UseFolderThumbnails));
+        SaveLayout();
+    }
+
+    private void OpenPluginLibrary_Click(object sender, RoutedEventArgs e)
+    {
+        Directory.CreateDirectory(PluginLibraryService.LibraryPath);
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = PluginLibraryService.LibraryPath,
+            UseShellExecute = true
+        });
+    }
+
+    private void RefreshPluginLibrary_Click(object sender, RoutedEventArgs e)
+    {
+        PluginLibraryService.Refresh(_settings.PluginLibrary);
+        PluginLibraryEmptyText.Visibility = _settings.PluginLibrary.Count == 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        SaveLayout();
+    }
+
+    private void PluginEnabledChanged(object sender, RoutedEventArgs e)
+    {
+        if (_initializing || sender is not CheckBox { DataContext: PluginLibraryEntry entry })
+            return;
+
+        entry.IsEnabled = ((CheckBox)sender).IsChecked == true;
         SaveLayout();
     }
 
