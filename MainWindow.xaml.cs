@@ -190,6 +190,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         VisualProfileCombo.SelectedValue = _settings.VisualProfile;
         FolderThumbnailsCheckBox.IsChecked = _settings.UseFolderThumbnails;
         OpenGroupsFullscreenCheckBox.IsChecked = _settings.OpenGroupsFullscreen;
+        WidgetBackgroundMatchesTilesCheckBox.IsChecked = _settings.WidgetBackgroundMatchesTiles;
         FolderThumbnailSizeSlider.Value = _settings.FolderThumbnailScale * 100;
         TileShadowCheckBox.IsChecked = _settings.TileShadowEnabled;
         TileOpacitySlider.Value = EffectiveTileOpacity * 100;
@@ -2699,6 +2700,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         SaveLayout();
     }
 
+    private void WidgetBackgroundSettingChanged(object sender, RoutedEventArgs e)
+    {
+        if (_initializing)
+            return;
+
+        _settings.WidgetBackgroundMatchesTiles = WidgetBackgroundMatchesTilesCheckBox.IsChecked == true;
+        OnPropertyChanged(nameof(WidgetBackgroundMatchesTiles));
+        SaveLayout();
+    }
+
     private void FolderThumbnailSizeChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_initializing)
@@ -2759,6 +2770,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
 
         _settings.TileColor = selected;
+        OnPropertyChanged(nameof(EffectiveTileColor));
         ApplyTheme(_settings.LightTheme);
         SaveLayout();
     }
@@ -2845,6 +2857,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _settings.TileShadowEnabled = true;
         _settings.TileShadowOpacity = 0.25;
         _settings.VisualProfile = "Glass";
+        _settings.WidgetBackgroundMatchesTiles = true;
 
         _initializing = true;
         TileOpacitySlider.Value = EffectiveTileOpacity * 100;
@@ -2852,7 +2865,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         TileShadowCheckBox.IsChecked = true;
         TileShadowOpacitySlider.Value = 25;
         VisualProfileCombo.SelectedValue = _settings.VisualProfile;
+        WidgetBackgroundMatchesTilesCheckBox.IsChecked = true;
         _initializing = false;
+        OnPropertyChanged(nameof(EffectiveTileColor));
+        OnPropertyChanged(nameof(WidgetBackgroundMatchesTiles));
         Opacity = 1;
 
         ApplyTheme(_settings.LightTheme);
@@ -2997,8 +3013,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string EffectiveWindowColor
         => NormalizeColor(_settings.WindowBackgroundColor, _settings.LightTheme ? "#F7F8FC" : "#101218");
 
-    private string EffectiveTileColor
+    public string EffectiveTileColor
         => NormalizeColor(_settings.TileColor, "#FFFFFF");
+
+    public bool WidgetBackgroundMatchesTiles
+        => _settings.WidgetBackgroundMatchesTiles;
 
     private string EffectivePositiveActionColor
         => NormalizeColor(_settings.PositiveActionColor, "#27B878");

@@ -21,6 +21,7 @@
     <Window.Resources>
         <conv:LauncherIconConverter x:Key="LauncherIconConverter"/>
         <conv:HexColorBrushConverter x:Key="HexColorBrushConverter"/>
+        <conv:WidgetBackgroundBrushConverter x:Key="WidgetBackgroundBrushConverter"/>
 
         <!-- Безопасные части визуала группы: без ContentControl и циклов логического дерева. -->
         <Style x:Key="LauncherSingleIconStyle" TargetType="Image">
@@ -305,8 +306,14 @@
         </DataTemplate>
 
         <DataTemplate x:Key="WidgetTileContentTemplate">
-            <Border Style="{StaticResource WidgetSurfaceStyle}" Margin="1"
-                    Background="{Binding WidgetBackgroundColor, Converter={StaticResource HexColorBrushConverter}}">
+            <Border Style="{StaticResource WidgetSurfaceStyle}" Margin="1">
+                <Border.Background>
+                    <MultiBinding Converter="{StaticResource WidgetBackgroundBrushConverter}">
+                        <Binding Path="WidgetBackgroundColor"/>
+                        <Binding Path="WidgetBackgroundMatchesTiles" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                        <Binding Path="EffectiveTileColor" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                    </MultiBinding>
+                </Border.Background>
                 <Grid ClipToBounds="True">
                     <controls:WebWidgetView Style="{StaticResource WidgetWebViewStyle}" Margin="1"/>
                     <controls:WidgetLauncherGridView Style="{StaticResource WidgetLauncherGridStyle}"
@@ -944,6 +951,12 @@
                                     <CheckBox x:Name="OpenGroupsFullscreenCheckBox" Margin="0,16,0,0" Style="{StaticResource ToggleSwitch}"
                                               Content="Открывать группы во весь экран" Checked="SettingsChanged" Unchecked="SettingsChanged"/>
                                     <TextBlock Text="Если выключено, группа открывается компактным окном по размеру сетки, не больше 80% рабочей области." Margin="0,7,18,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Виджеты" Margin="0,18,0,0" Style="{StaticResource SettingsSubsectionTitle}"/>
+                                    <CheckBox x:Name="WidgetBackgroundMatchesTilesCheckBox" Style="{StaticResource ToggleSwitch}"
+                                              Content="Фон виджетов как у плиток"
+                                              Checked="WidgetBackgroundSettingChanged" Unchecked="WidgetBackgroundSettingChanged"/>
+                                    <TextBlock Text="При выключении возвращаются индивидуальные цвета виджетов и их автофон по выбранной теме."
+                                               Margin="0,7,18,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
                                     <Grid Margin="0,16,0,0"><TextBlock Text="Размер миниатюр" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="FolderThumbnailSizeValueText" Style="{StaticResource SettingsValueText}"/></Grid>
                                     <controls:NumericStepper x:Name="FolderThumbnailSizeSlider" Margin="0,5,0,0" Minimum="55" Maximum="100" Step="5" IsEnabled="{Binding IsChecked, ElementName=FolderThumbnailsCheckBox}" ValueChanged="FolderThumbnailSizeChanged"/>
                                     <TextBlock Text="Размер значков внутри каждого виджета настраивается в его редакторе" Margin="0,14,0,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
