@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -22,7 +24,9 @@ public partial class WidgetLauncherGridView : UserControl
     private const string WidgetChildDragFormat = "AppLauncher.WidgetChild";
     public const string LauncherItemDragFormat = "AppLauncher.LauncherItem";
     private LauncherItem? _pressedItem;
+    private ObservableCollection<LauncherItem>? _visibleItems;
     private Point _dragStart;
+    private readonly Stack<LauncherItem> _folderStack = new();
 
     public static readonly DependencyProperty IsEditingProperty = DependencyProperty.Register(
         nameof(IsEditing),
@@ -33,6 +37,11 @@ public partial class WidgetLauncherGridView : UserControl
     public WidgetLauncherGridView()
     {
         InitializeComponent();
+        DataContextChanged += (_, _) =>
+        {
+            _folderStack.Clear();
+            ShowCurrentFolder();
+        };
     }
 
     public bool IsEditing
@@ -45,10 +54,12 @@ public partial class WidgetLauncherGridView : UserControl
     public event EventHandler<LauncherItemDragStateEventArgs>? DragStateChanged;
     public event EventHandler? LayoutChanged;
 
-    private void Root_MouseEnter(object sender, MouseEventArgs e)
+    private void FolderBack_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is LauncherItem widget && WidgetFolderService.Refresh(widget))
-            LayoutChanged?.Invoke(this, EventArgs.Empty);
+        if (_folderStack.Count == 0)
+            return;
+        _folderStack.Pop();
+        ShowCurrentFolder();
     }
 
     private void Child_Click(object sender, RoutedEventArgs e)
@@ -56,16 +67,23 @@ public partial class WidgetLauncherGridView : UserControl
         e.Handled = true;
         if (IsEditing || sender is not Button { DataContext: LauncherItem item })
             return;
+        if (item.IsFolder)
+        {
+            WidgetFolderService.RefreshFolder(item);
+            _folderStack.Push(item);
+            ShowCurrentFolder();
+            return;
+        }
         ItemInvoked?.Invoke(this, new LauncherItemInvokedEventArgs(item));
     }
 
     private void RemoveChild_Click(object sender, RoutedEventArgs e)
     {
         e.Handled = true;
-        if (!IsEditing || DataContext is not LauncherItem widget
+        if (!IsEditing
             || sender is not Button { DataContext: LauncherItem item })
             return;
-        if (widget.Children.Remove(item))
+        if (CurrentItems?.Remove(item) == true)
             LayoutChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -128,7 +146,7 @@ public partial class WidgetLauncherGridView : UserControl
     {
         if (!e.Data.GetDataPresent(WidgetChildDragFormat))
             return;
-        if (DataContext is not LauncherItem widget
+        if (CurrentItems is not { } currentItems
             || e.Data.GetData(WidgetChildDragFormat) is not LauncherItem source
             || sender is not Button { DataContext: LauncherItem target }
             || ReferenceEquals(source, target))
@@ -139,17 +157,17 @@ public partial class WidgetLauncherGridView : UserControl
 
         if (target.IsFolder && source.IsApplication)
         {
-            widget.Children.Remove(source);
+            currentItems.Remove(source);
             target.Children.Add(source);
             LayoutChanged?.Invoke(this, EventArgs.Empty);
         }
         else
         {
-            var sourceIndex = widget.Children.IndexOf(source);
-            var targetIndex = widget.Children.IndexOf(target);
+            var sourceIndex = currentItems.IndexOf(source);
+            var targetIndex = currentItems.IndexOf(target);
             if (sourceIndex < 0 || targetIndex < 0)
                 return;
-            widget.Children.Move(sourceIndex, targetIndex);
+            currentItems.Move(sourceIndex, targetIndex);
             LayoutChanged?.Invoke(this, EventArgs.Empty);
         }
         e.Handled = true;
@@ -165,15 +183,42 @@ public partial class WidgetLauncherGridView : UserControl
 
     private void Root_Drop(object sender, DragEventArgs e)
     {
-        if (DataContext is not LauncherItem widget
+        if (CurrentItems is not { } currentItems
             || e.Data.GetData(WidgetChildDragFormat) is not LauncherItem source)
             return;
-        var index = widget.Children.IndexOf(source);
-        if (index >= 0 && index != widget.Children.Count - 1)
+        var index = currentItems.IndexOf(source);
+        if (index >= 0 && index != currentItems.Count - 1)
         {
-            widget.Children.Move(index, widget.Children.Count - 1);
+            currentItems.Move(index, currentItems.Count - 1);
             LayoutChanged?.Invoke(this, EventArgs.Empty);
         }
         e.Handled = true;
     }
+
+    private ObservableCollection<LauncherItem>? CurrentItems
+        => _folderStack.Count > 0
+            ? _folderStack.Peek().Children
+            : (DataContext as LauncherItem)?.Children;
+
+    private void ShowCurrentFolder()
+    {
+        if (_visibleItems is not null)
+            _visibleItems.CollectionChanged -= VisibleItems_CollectionChanged;
+
+        _visibleItems = CurrentItems;
+        InnerItems.ItemsSource = _visibleItems;
+        if (_visibleItems is not null)
+            _visibleItems.CollectionChanged += VisibleItems_CollectionChanged;
+
+        var folder = _folderStack.Count > 0 ? _folderStack.Peek() : null;
+        FolderNavigationBar.Visibility = folder is null ? Visibility.Collapsed : Visibility.Visible;
+        FolderTitle.Text = folder?.Name ?? string.Empty;
+        UpdateEmptyState();
+    }
+
+    private void VisibleItems_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        => UpdateEmptyState();
+
+    private void UpdateEmptyState()
+        => EmptyState.Visibility = _visibleItems is { Count: 0 } ? Visibility.Visible : Visibility.Collapsed;
 }

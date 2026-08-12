@@ -21,6 +21,84 @@
     <Window.Resources>
         <conv:LauncherIconConverter x:Key="LauncherIconConverter"/>
         <conv:HexColorBrushConverter x:Key="HexColorBrushConverter"/>
+        <conv:WidgetBackgroundBrushConverter x:Key="WidgetBackgroundBrushConverter"/>
+
+        <Style x:Key="PremiumComboBoxItem" TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Padding" Value="13,10"/>
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="Surface" Margin="4,2" Padding="{TemplateBinding Padding}" CornerRadius="8">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource HoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource AccentSolidBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="PremiumComboBox" TargetType="ComboBox">
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SearchBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource TileBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource PremiumComboBoxItem}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton Focusable="False" ClickMode="Press"
+                                          IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          Background="Transparent" BorderThickness="0">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="Surface" Background="{Binding Background, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                BorderThickness="1" CornerRadius="10">
+                                            <TextBlock Text="&#xE70D;" HorizontalAlignment="Right" Margin="0,0,14,0"
+                                                       VerticalAlignment="Center" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                       FontSize="11" Foreground="{DynamicResource MutedTextBrush}"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource TileHoverBrush}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource AccentSolidBrush}"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter Margin="14,0,42,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                              Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
+                            <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom"
+                                   AllowsTransparency="True" PopupAnimation="Fade" Focusable="False">
+                                <Border Margin="0,6,0,0" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                        Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource TileBorderBrush}"
+                                        BorderThickness="1" CornerRadius="12" Padding="4">
+                                    <Border.Effect><DropShadowEffect Color="#05070C" BlurRadius="22" ShadowDepth="5" Opacity="0.48"/></Border.Effect>
+                                    <ScrollViewer MaxHeight="240" CanContentScroll="True">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
         <!-- Безопасные части визуала группы: без ContentControl и циклов логического дерева. -->
         <Style x:Key="LauncherSingleIconStyle" TargetType="Image">
@@ -305,8 +383,14 @@
         </DataTemplate>
 
         <DataTemplate x:Key="WidgetTileContentTemplate">
-            <Border Style="{StaticResource WidgetSurfaceStyle}" Margin="1"
-                    Background="{Binding WidgetBackgroundColor, Converter={StaticResource HexColorBrushConverter}}">
+            <Border Style="{StaticResource WidgetSurfaceStyle}" Margin="1">
+                <Border.Background>
+                    <MultiBinding Converter="{StaticResource WidgetBackgroundBrushConverter}">
+                        <Binding Path="WidgetBackgroundColor"/>
+                        <Binding Path="WidgetBackgroundMatchesTiles" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                        <Binding Path="EffectiveTileColor" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                    </MultiBinding>
+                </Border.Background>
                 <Grid ClipToBounds="True">
                     <controls:WebWidgetView Style="{StaticResource WidgetWebViewStyle}" Margin="1"/>
                     <controls:WidgetLauncherGridView Style="{StaticResource WidgetLauncherGridStyle}"
@@ -339,6 +423,7 @@
                                    Foreground="{DynamicResource MutedTextBrush}" FontFamily="{StaticResource UiFont}"
                                    FontSize="9.5" TextTrimming="CharacterEllipsis"/>
                     </Grid>
+
                 </Grid>
             </Border>
         </DataTemplate>
@@ -477,7 +562,7 @@
         </Style>
     </Window.Resources>
 
-    <Border x:Name="RootBorder" Margin="0" Background="{DynamicResource WindowBrush}"
+    <Border x:Name="RootBorder" Margin="0" Background="Transparent"
             BorderBrush="{DynamicResource WindowBorderBrush}" BorderThickness="1" CornerRadius="10">
         <Grid>
             <Grid.RowDefinitions>
@@ -485,6 +570,26 @@
                 <RowDefinition Height="52"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
+            <Grid IsHitTestVisible="False" Panel.ZIndex="-1">
+                <Border Background="{DynamicResource WindowBrush}"/>
+                <Border>
+                    <Border.Background>
+                        <RadialGradientBrush Center="0.78,0.12" GradientOrigin="0.78,0.12" RadiusX="0.9" RadiusY="0.9">
+                            <GradientStop Color="#242C79B9" Offset="0"/>
+                            <GradientStop Color="#0A152946" Offset="0.46"/>
+                            <GradientStop Color="#00101218" Offset="1"/>
+                        </RadialGradientBrush>
+                    </Border.Background>
+                </Border>
+                <Ellipse Width="520" Height="340" HorizontalAlignment="Right" VerticalAlignment="Top"
+                         Margin="0,-150,-140,0" Fill="#164D75FF">
+                    <Ellipse.Effect><BlurEffect Radius="70"/></Ellipse.Effect>
+                </Ellipse>
+                <Ellipse Width="430" Height="280" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                         Margin="-170,0,0,-110" Fill="#1234D399">
+                    <Ellipse.Effect><BlurEffect Radius="80"/></Ellipse.Effect>
+                </Ellipse>
+            </Grid>
 
             <!-- Единая компактная командная строка -->
             <Grid Grid.Row="0" Margin="18,10,16,8" Background="Transparent" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
@@ -602,7 +707,7 @@
                                                 <MenuItem.Header><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8DE;" Width="27" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"/><TextBlock Text="На главный экран"/></StackPanel></MenuItem.Header>
                                             </MenuItem>
                                             <Separator/>
-                                            <MenuItem Style="{StaticResource ModernMenuItem}" Foreground="#FF667A" Click="RemoveItem_Click">
+                                            <MenuItem Style="{StaticResource ModernMenuItem}" Foreground="{DynamicResource NegativeSolidBrush}" Click="RemoveItem_Click">
                                                 <MenuItem.Header><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE74D;" Width="27" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"/><TextBlock Text="Убрать из AppLauncher"/></StackPanel></MenuItem.Header>
                                             </MenuItem>
                                         </ContextMenu>
@@ -700,6 +805,57 @@
                                        FontWeight="SemiBold"/>
                         </Border>
                     </Grid>
+                </Grid>
+
+                <Grid x:Name="FolderFlyoutLayer" Background="#75080A10" Visibility="Collapsed" Panel.ZIndex="12">
+                    <Border x:Name="FolderFlyoutPanel" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource AccentSolidBrush}"
+                            BorderThickness="1" CornerRadius="14" Padding="12">
+                        <Border.Effect><DropShadowEffect Color="#03050A" BlurRadius="28" ShadowDepth="8" Opacity="0.52"/></Border.Effect>
+                        <Grid>
+                            <Grid.RowDefinitions><RowDefinition Height="42"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <Grid>
+                                <TextBlock x:Name="FolderFlyoutTitle" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextBrush}" FontFamily="{StaticResource DisplayFont}"
+                                           FontSize="17" FontWeight="SemiBold"/>
+                                <Button HorizontalAlignment="Right" Style="{StaticResource ChromeButton}" Content="&#xE8BB;"
+                                        ToolTip="Закрыть группу" Click="CloseFolderFlyout_Click"/>
+                            </Grid>
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                          PanningMode="VerticalOnly"
+                                          PreviewMouseWheel="FolderFlyoutScrollViewer_PreviewMouseWheel">
+                                <ItemsControl ItemsSource="{Binding FolderFlyoutItems}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                           <UniformGrid Columns="{Binding FolderFlyoutColumns, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Style="{StaticResource TileButtonStyle}"
+                                                    Width="{Binding DisplayWidth}" Height="{Binding DisplayHeight}"
+                                                    Margin="{Binding TileMargin, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    Effect="{Binding TileShadowEffect, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    ToolTip="{Binding ToolTipText}" Click="FolderFlyoutTile_Click">
+                                                <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                                                    <ContentControl.Style>
+                                                        <Style TargetType="ContentControl">
+                                                            <Setter Property="ContentTemplate" Value="{StaticResource StandardTileContentTemplate}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsWidget}" Value="True">
+                                                                    <Setter Property="ContentTemplate" Value="{StaticResource WidgetTileContentTemplate}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </ContentControl.Style>
+                                                </ContentControl>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
                 </Grid>
 
                 <StackPanel x:Name="EmptyState" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -812,13 +968,22 @@
                                 <StackPanel>
                                     <TextBlock Text="Оформление" Style="{StaticResource SettingsSubsectionTitle}"/>
                                     <CheckBox x:Name="LightThemeCheckBox" Style="{StaticResource ToggleSwitch}" Content="Светлая тема" Checked="ThemeChanged" Unchecked="ThemeChanged"/>
+                                    <TextBlock Text="Визуальный профиль" Margin="0,17,0,0" Foreground="{DynamicResource TextBrush}"/>
+                                    <ComboBox x:Name="VisualProfileCombo" Style="{StaticResource PremiumComboBox}" Margin="0,6,0,0"
+                                              SelectedValuePath="Tag" SelectionChanged="VisualProfileChanged">
+                                        <ComboBoxItem Tag="Glass" Content="Стекло - объём и мягкое свечение"/>
+                                        <ComboBoxItem Tag="Soft" Content="Мягкий - спокойные поверхности"/>
+                                        <ComboBoxItem Tag="Solid" Content="Контрастный - чёткие панели"/>
+                                    </ComboBox>
+                                    <TextBlock Text="Профиль меняет глубину и материал поверхностей. Цвета, размеры и прозрачность ниже остаются под вашим контролем."
+                                               Margin="0,7,8,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
                                     <Grid Margin="0,17,0,0">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                         <StackPanel VerticalAlignment="Center"><TextBlock Text="Фон приложения" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="WindowColorValueText" Margin="0,3,0,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="11"/></StackPanel>
                                         <Button Grid.Column="1" Style="{StaticResource ColorChoiceButton}" Click="ChooseWindowColor_Click"><StackPanel Orientation="Horizontal"><Border x:Name="WindowColorSwatch" Width="18" Height="18" CornerRadius="5" Margin="0,0,8,0" BorderBrush="{DynamicResource ColorSwatchBorderBrush}" BorderThickness="1.5"/><TextBlock Text="Выбрать" VerticalAlignment="Center"/></StackPanel></Button>
                                     </Grid>
                                     <Grid Margin="0,15,0,0"><TextBlock Text="Прозрачность окна" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="WindowOpacityValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="WindowOpacitySlider" Margin="0,5,0,0" Minimum="45" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="WindowOpacityChanged"/>
+                                    <controls:NumericStepper x:Name="WindowOpacitySlider" Margin="0,5,0,0" Minimum="45" Maximum="100" Step="5" ValueChanged="WindowOpacityChanged"/>
 
                                     <Border Height="1" Margin="0,18,0,15" Background="{DynamicResource WindowBorderBrush}"/>
                                     <TextBlock Text="Плитки" Style="{StaticResource SettingsSubsectionTitle}"/>
@@ -828,19 +993,31 @@
                                         <Button Grid.Column="1" Style="{StaticResource ColorChoiceButton}" Click="ChooseTileColor_Click"><StackPanel Orientation="Horizontal"><Border x:Name="TileColorSwatch" Width="18" Height="18" CornerRadius="5" Margin="0,0,8,0" BorderBrush="{DynamicResource ColorSwatchBorderBrush}" BorderThickness="1.5"/><TextBlock Text="Выбрать" VerticalAlignment="Center"/></StackPanel></Button>
                                     </Grid>
                                     <Grid Margin="0,15,0,0"><TextBlock Text="Прозрачность плиток" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="TileOpacityValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="TileOpacitySlider" Margin="0,5,0,0" Minimum="5" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="TileAppearanceChanged"/>
+                                    <controls:NumericStepper x:Name="TileOpacitySlider" Margin="0,5,0,0" Minimum="5" Maximum="100" Step="5" ValueChanged="TileAppearanceChanged"/>
                                     <CheckBox x:Name="TileShadowCheckBox" Margin="0,17,0,0" Style="{StaticResource ToggleSwitch}" Content="Отбрасывать тень" Checked="TileShadowChanged" Unchecked="TileShadowChanged"/>
                                     <Grid Margin="0,15,0,0"><TextBlock Text="Интенсивность тени" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="TileShadowOpacityValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="TileShadowOpacitySlider" Margin="0,5,0,0" Minimum="10" Maximum="70" TickFrequency="5" IsSnapToTickEnabled="True" IsEnabled="{Binding IsChecked, ElementName=TileShadowCheckBox}" Style="{StaticResource ModernSlider}" ValueChanged="TileShadowOpacityChanged"/>
+                                    <controls:NumericStepper x:Name="TileShadowOpacitySlider" Margin="0,5,0,0" Minimum="10" Maximum="70" Step="5" IsEnabled="{Binding IsChecked, ElementName=TileShadowCheckBox}" ValueChanged="TileShadowOpacityChanged"/>
 
                                     <Border Height="1" Margin="0,18,0,15" Background="{DynamicResource WindowBorderBrush}"/>
                                     <TextBlock Text="Значки и сетка" Style="{StaticResource SettingsSubsectionTitle}"/>
                                     <Grid><TextBlock Text="Размер значка" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="IconSizeValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="IconSizeSlider" Margin="0,5,0,0" Minimum="36" Maximum="82" TickFrequency="2" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="LayoutMetricsChanged"/>
+                                    <controls:NumericStepper x:Name="IconSizeSlider" Margin="0,5,0,0" Minimum="36" Maximum="82" Step="2" ValueChanged="LayoutMetricsChanged"/>
                                     <Grid Margin="0,15,0,0"><TextBlock Text="Размер плитки" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="TileSizeValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="TileSizeSlider" Margin="0,5,0,0" Minimum="100" Maximum="170" TickFrequency="2" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="LayoutMetricsChanged"/>
+                                    <controls:NumericStepper x:Name="TileSizeSlider" Margin="0,5,0,0" Minimum="100" Maximum="170" Step="2" ValueChanged="LayoutMetricsChanged"/>
                                     <Grid Margin="0,15,0,0"><TextBlock Text="Расстояние в сетке" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="GridSpacingValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="GridSpacingSlider" Margin="0,5,0,0" Minimum="2" Maximum="20" TickFrequency="2" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="LayoutMetricsChanged"/>
+                                    <controls:NumericStepper x:Name="GridSpacingSlider" Margin="0,5,0,0" Minimum="2" Maximum="20" Step="2" ValueChanged="LayoutMetricsChanged"/>
+                                    <Border Height="1" Margin="0,18,0,15" Background="{DynamicResource WindowBorderBrush}"/>
+                                    <TextBlock Text="Цвета действий" Style="{StaticResource SettingsSubsectionTitle}"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center"><TextBlock Text="Позитивные действия" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="PositiveActionColorValueText" Margin="0,3,0,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="11"/></StackPanel>
+                                        <Button Grid.Column="1" Style="{StaticResource ColorChoiceButton}" Click="ChoosePositiveActionColor_Click"><StackPanel Orientation="Horizontal"><Border x:Name="PositiveActionColorSwatch" Width="18" Height="18" CornerRadius="5" Margin="0,0,8,0" BorderBrush="{DynamicResource ColorSwatchBorderBrush}" BorderThickness="1.5"/><TextBlock Text="Выбрать" VerticalAlignment="Center"/></StackPanel></Button>
+                                    </Grid>
+                                    <Grid Margin="0,13,0,0">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center"><TextBlock Text="Негативные действия" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="NegativeActionColorValueText" Margin="0,3,0,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="11"/></StackPanel>
+                                        <Button Grid.Column="1" Style="{StaticResource ColorChoiceButton}" Click="ChooseNegativeActionColor_Click"><StackPanel Orientation="Horizontal"><Border x:Name="NegativeActionColorSwatch" Width="18" Height="18" CornerRadius="5" Margin="0,0,8,0" BorderBrush="{DynamicResource ColorSwatchBorderBrush}" BorderThickness="1.5"/><TextBlock Text="Выбрать" VerticalAlignment="Center"/></StackPanel></Button>
+                                    </Grid>
                                     <Button Margin="0,17,0,0" Height="38" Style="{StaticResource SecondaryActionButton}" Content="Сбросить оформление" Click="ResetAppearance_Click"/>
                                 </StackPanel>
                             </Expander>
@@ -851,9 +1028,62 @@
                                     <TextBlock Text="Группы приложений" Style="{StaticResource SettingsSubsectionTitle}"/>
                                     <CheckBox x:Name="FolderThumbnailsCheckBox" Style="{StaticResource ToggleSwitch}" Content="Миниатюры вместо значка" Checked="FolderThumbnailSettingChanged" Unchecked="FolderThumbnailSettingChanged"/>
                                     <TextBlock Text="Показывать четыре наиболее часто запускаемых приложения из группы" Margin="0,7,54,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
+                                    <CheckBox x:Name="OpenGroupsFullscreenCheckBox" Margin="0,16,0,0" Style="{StaticResource ToggleSwitch}"
+                                              Content="Открывать группы во весь экран" Checked="SettingsChanged" Unchecked="SettingsChanged"/>
+                                    <TextBlock Text="Если выключено, группа открывается компактным окном по размеру сетки, не больше 80% рабочей области." Margin="0,7,18,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Виджеты" Margin="0,18,0,0" Style="{StaticResource SettingsSubsectionTitle}"/>
+                                    <CheckBox x:Name="WidgetBackgroundMatchesTilesCheckBox" Style="{StaticResource ToggleSwitch}"
+                                              Content="Фон виджетов как у плиток"
+                                              Checked="WidgetBackgroundSettingChanged" Unchecked="WidgetBackgroundSettingChanged"/>
+                                    <TextBlock Text="При выключении возвращаются индивидуальные цвета виджетов и их автофон по выбранной теме."
+                                               Margin="0,7,18,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
                                     <Grid Margin="0,16,0,0"><TextBlock Text="Размер миниатюр" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="FolderThumbnailSizeValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="FolderThumbnailSizeSlider" Margin="0,5,0,0" Minimum="55" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" IsEnabled="{Binding IsChecked, ElementName=FolderThumbnailsCheckBox}" Style="{StaticResource ModernSlider}" ValueChanged="FolderThumbnailSizeChanged"/>
+                                    <controls:NumericStepper x:Name="FolderThumbnailSizeSlider" Margin="0,5,0,0" Minimum="55" Maximum="100" Step="5" IsEnabled="{Binding IsChecked, ElementName=FolderThumbnailsCheckBox}" ValueChanged="FolderThumbnailSizeChanged"/>
                                     <TextBlock Text="Размер значков внутри каждого виджета настраивается в его редакторе" Margin="0,14,0,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
+                                    <Border Height="1" Margin="0,18,0,15" Background="{DynamicResource WindowBorderBrush}"/>
+                                    <TextBlock Text="Библиотека плагинов" Style="{StaticResource SettingsSubsectionTitle}"/>
+                                    <TextBlock Text="Плагины добавляются отдельными папками с файлом plugin.json. Они не запускаются, пока не будет добавлен их поддерживаемый тип."
+                                               Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
+                                    <ItemsControl ItemsSource="{Binding PluginLibrary}" Margin="0,10,0,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Padding="10" Margin="0,0,0,7" CornerRadius="9"
+                                                        Background="{DynamicResource SearchBrush}" BorderBrush="{DynamicResource TileBorderBrush}" BorderThickness="1">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
+                                                            <TextBlock Text="{Binding Description}" Margin="0,3,0,0" FontSize="10.5" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                                            <TextBlock Text="{Binding Version}" HorizontalAlignment="Right" FontSize="10.5" Foreground="{DynamicResource MutedTextBrush}"/>
+                                                            <Button Margin="0,7,0,0" Height="28" Padding="9,0"
+                                                                    Content="Добавить" Click="AddPluginWidget_Click">
+                                                                <Button.Style>
+                                                                    <Style TargetType="Button" BasedOn="{StaticResource SecondaryActionButton}">
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsInstalled}" Value="False">
+                                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                                                <Setter Property="ToolTip" Value="Для этого плагина не найден файл виджета"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Button.Style>
+                                                            </Button>
+                                                            <CheckBox Margin="0,7,0,0" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding IsEnabled}"
+                                                                      Checked="PluginEnabledChanged" Unchecked="PluginEnabledChanged"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock x:Name="PluginLibraryEmptyText" Margin="0,4,0,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5"
+                                               Text="Библиотека пуста. Откройте папку и добавьте первый плагин."/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                        <Button Height="38" Padding="12,0" Style="{StaticResource SecondaryActionButton}" Content="Открыть папку" Click="OpenPluginLibrary_Click"/>
+                                        <Button Width="108" Height="38" Margin="8,0,0,0" Padding="10,0" Style="{StaticResource SecondaryActionButton}" Content="Обновить" Click="RefreshPluginLibrary_Click"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Expander>
 
@@ -879,9 +1109,9 @@
                                 <Expander.Header><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Text="&#xE737;" Foreground="{DynamicResource AccentSolidBrush}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="17" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Окно" FontWeight="SemiBold"/><TextBlock Text="Размер рабочей области" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" Margin="0,2,0,0"/></StackPanel></Grid></Expander.Header>
                                 <StackPanel>
                                     <Grid><TextBlock Text="Ширина" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="WindowWidthValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="WindowWidthSlider" Margin="0,5,0,0" Minimum="760" Maximum="1400" TickFrequency="20" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="WindowMetricsChanged"/>
+                                    <controls:NumericStepper x:Name="WindowWidthSlider" Margin="0,5,0,0" Minimum="760" Maximum="1400" Step="20" ValueChanged="WindowMetricsChanged"/>
                                     <Grid Margin="0,15,0,0"><TextBlock Text="Высота" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="WindowHeightValueText" Style="{StaticResource SettingsValueText}"/></Grid>
-                                    <Slider x:Name="WindowHeightSlider" Margin="0,5,0,0" Minimum="500" Maximum="950" TickFrequency="10" IsSnapToTickEnabled="True" Style="{StaticResource ModernSlider}" ValueChanged="WindowMetricsChanged"/>
+                                    <controls:NumericStepper x:Name="WindowHeightSlider" Margin="0,5,0,0" Minimum="500" Maximum="950" Step="10" ValueChanged="WindowMetricsChanged"/>
                                 </StackPanel>
                             </Expander>
 
@@ -909,7 +1139,7 @@
                             </Grid>
                         </Border>
                         <Button Grid.Row="1" Height="42" Padding="13,0" Style="{StaticResource SecondaryActionButton}"
-                                Foreground="#FF6B7D" Content="Скрыть AppLauncher в трей" Click="CloseButton_Click"/>
+                                Foreground="{DynamicResource NegativeSolidBrush}" Content="Скрыть AppLauncher в трей" Click="CloseButton_Click"/>
                     </Grid>
                 </Grid>
             </Border>

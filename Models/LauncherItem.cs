@@ -55,6 +55,7 @@ public sealed class LauncherItem : INotifyPropertyChanged
     private WidgetLauncherDisplayMode _widgetLauncherDisplayMode;
     private string _widgetFolderPath = string.Empty;
     private string _widgetBackgroundColor = "#242730";
+    private bool _widgetBackgroundFollowsTheme = true;
     private double _displayWidth = 130;
     private double _displayHeight = 138;
     private int _layoutColumn;
@@ -249,6 +250,20 @@ public sealed class LauncherItem : INotifyPropertyChanged
         get => _widgetBackgroundColor;
         set => SetField(ref _widgetBackgroundColor,
             string.IsNullOrWhiteSpace(value) ? "#242730" : value.Trim());
+    }
+
+    public bool WidgetBackgroundFollowsTheme
+    {
+        get => _widgetBackgroundFollowsTheme;
+        set => SetField(ref _widgetBackgroundFollowsTheme, value);
+    }
+
+    public void ApplyThemeWidgetBackground(string color)
+    {
+        if (!WidgetBackgroundFollowsTheme)
+            return;
+
+        WidgetBackgroundColor = color;
     }
 
     public ObservableCollection<LauncherItem> Children

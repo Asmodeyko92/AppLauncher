@@ -11,7 +11,11 @@ public sealed class LauncherSettings
     public int GlobalHotkeyModifiers { get; set; } = 0x0003;
     public int GlobalHotkeyVirtualKey { get; set; } = 0x20;
     public bool LightTheme { get; set; }
+    public string VisualProfile { get; set; } = "Glass";
+    public bool WidgetBackgroundMatchesTiles { get; set; } = true;
+    public ObservableCollection<PluginLibraryEntry> PluginLibrary { get; set; } = new();
     public bool UseFolderThumbnails { get; set; }
+    public bool OpenGroupsFullscreen { get; set; }
     public double FolderThumbnailScale { get; set; } = 0.92;
     public double WindowWidth { get; set; } = 1000;
     public double WindowHeight { get; set; } = 700;
@@ -21,6 +25,8 @@ public sealed class LauncherSettings
     public double GridSpacing { get; set; } = 6;
     public string? WindowBackgroundColor { get; set; }
     public string? TileColor { get; set; }
+    public string? PositiveActionColor { get; set; }
+    public string? NegativeActionColor { get; set; }
     public ObservableCollection<string> SavedColors { get; set; } = new();
     public double? TileOpacity { get; set; }
     public bool TileShadowEnabled { get; set; }

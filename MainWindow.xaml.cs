@@ -35,7 +35,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly LauncherSettings _settings;
     private readonly DispatcherTimer _toastTimer;
     private readonly DispatcherTimer _settingsSaveTimer;
-    private readonly DispatcherTimer _edgePageTimer;
     private readonly List<LauncherItem> _availableItems = new();
     private readonly List<PageLayout> _pages = new();
     private readonly Dictionary<FrameworkElement, Transform> _reorderPreviewTransforms = new();
@@ -44,11 +43,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly TranslateTransform _outgoingSnapshotTranslate = new();
     private readonly TranslateTransform _incomingSnapshotTranslate = new();
     private readonly Dictionary<int, BitmapSource> _pageSnapshotCache = new();
-    private readonly HashSet<int> _refinedPageSnapshots = new();
     private LauncherItem? _currentFolder;
+    private LauncherItem? _flyoutFolder;
     private LauncherItem? _pressedItem;
     private LauncherItem? _activeDragItem;
-    private bool _dragCommitted;
     private Guid? _previewTargetId;
     private bool _previewInsertAfter;
     private int _reflowGeneration;
@@ -89,6 +87,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     public ObservableCollection<LauncherItem> DisplayItems { get; } = new();
     public ObservableCollection<LauncherItem> IncomingPageItems { get; } = new();
+    public ObservableCollection<LauncherItem> FolderFlyoutItems { get; } = new();
+    public ObservableCollection<PluginLibraryEntry> PluginLibrary => _settings.PluginLibrary;
+    public int FolderFlyoutColumns { get; private set; } = 1;
     public double TileSize => _settings.TileSize;
     public double TileHeight => _settings.TileSize + 8;
     public double GridCellWidth => TileSize + _settings.GridSpacing;
@@ -97,7 +98,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public double IconPlateSize => IconSize + 14;
     public double FolderThumbnailSize => Math.Max(14, IconPlateSize / 2 * _settings.FolderThumbnailScale - 2);
     public bool UseFolderThumbnails => _settings.UseFolderThumbnails;
-    public string AppVersion => typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "1.9.0";
+    public string AppVersion => typeof(MainWindow).Assembly
+        .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+        .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+        .FirstOrDefault()?.InformationalVersion ?? "1.9.13 Beta";
     public Thickness TileMargin => new(_settings.GridSpacing / 2);
     public Effect? TileShadowEffect { get; private set; }
 
@@ -155,6 +159,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         _settings = LayoutStore.Load();
         _settings.SavedColors ??= new ObservableCollection<string>();
+        _settings.PluginLibrary ??= new ObservableCollection<PluginLibraryEntry>();
+        PluginLibraryService.InstallBuiltInExamples();
+        PluginLibraryService.Refresh(_settings.PluginLibrary);
+        PreserveLegacyWidgetBackgrounds(_settings.Items);
         UpgradeVisualDefaults();
         InitializeComponent();
         DataContext = this;
@@ -184,7 +192,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         AlwaysOnTopCheckBox.IsChecked = _settings.AlwaysOnTop;
         GlobalHotkeyCheckBox.IsChecked = _settings.GlobalHotkeyEnabled;
         LightThemeCheckBox.IsChecked = _settings.LightTheme;
+        VisualProfileCombo.SelectedValue = _settings.VisualProfile;
         FolderThumbnailsCheckBox.IsChecked = _settings.UseFolderThumbnails;
+        OpenGroupsFullscreenCheckBox.IsChecked = _settings.OpenGroupsFullscreen;
+        WidgetBackgroundMatchesTilesCheckBox.IsChecked = _settings.WidgetBackgroundMatchesTiles;
         FolderThumbnailSizeSlider.Value = _settings.FolderThumbnailScale * 100;
         TileShadowCheckBox.IsChecked = _settings.TileShadowEnabled;
         TileOpacitySlider.Value = EffectiveTileOpacity * 100;
@@ -198,6 +209,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         Opacity = _settings.WindowOpacity;
         Topmost = _settings.AlwaysOnTop;
         ApplyTheme(_settings.LightTheme);
+        PluginLibraryEmptyText.Visibility = _settings.PluginLibrary.Count == 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         UpdateHotkeyUi();
         UpdateMetricLabels();
 
@@ -214,9 +228,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             _settingsSaveTimer.Stop();
             SaveLayout();
         };
-
-        _edgePageTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(520) };
-        _edgePageTimer.Tick += EdgePageTimer_Tick;
 
         Loaded += (_, _) =>
         {
@@ -243,6 +254,22 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
 
         _settings.VisualStyleVersion = 2;
+    }
+
+    private static void PreserveLegacyWidgetBackgrounds(IEnumerable<LauncherItem> items)
+    {
+        foreach (var item in items)
+        {
+            if (item.IsWidget
+                && item.WidgetBackgroundFollowsTheme
+                && !string.Equals(item.WidgetBackgroundColor, "#242730", StringComparison.OrdinalIgnoreCase))
+            {
+                item.WidgetBackgroundFollowsTheme = false;
+            }
+
+            if (item.IsFolder || item.IsWidget)
+                PreserveLegacyWidgetBackgrounds(item.Children);
+        }
     }
 
     public void ShowLauncher()
@@ -306,7 +333,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void RefreshItems(bool resetPage = false)
     {
-        RefreshWidgetFolderSources(_settings.Items);
         UpdateFolderMembership(_settings.Items, false);
         _availableItems.Clear();
         var query = SearchBox?.Text.Trim() ?? string.Empty;
@@ -350,23 +376,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         RecalculatePagination(!resetPage);
     }
 
-    private static void RefreshWidgetFolderSources(IEnumerable<LauncherItem> items)
-    {
-        foreach (var item in items)
-        {
-            if (item.IsWidget)
-                WidgetFolderService.Refresh(item);
-            if (item.IsFolder)
-                RefreshWidgetFolderSources(item.Children);
-        }
-    }
-
     private void RecalculatePagination(bool preserveAnchor)
     {
         StopPageAnimation();
         _pageSnapshotGeneration++;
         _pageSnapshotCache.Clear();
-        _refinedPageSnapshots.Clear();
 
         foreach (var item in _availableItems)
             UpdateDisplayMetrics(item);
@@ -559,10 +573,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void UpdatePageNavigator()
     {
+        var navigationPage = _queuedPage ?? _currentPage;
         PageNavigator.Visibility = _pageCount > 1 ? Visibility.Visible : Visibility.Collapsed;
-        PageNumberText.Text = $"{_currentPage + 1} / {_pageCount}";
-        PreviousPageButton.IsEnabled = _currentPage > 0 && !_isPageAnimating;
-        NextPageButton.IsEnabled = _currentPage < _pageCount - 1 && !_isPageAnimating;
+        PageNumberText.Text = $"{navigationPage + 1} / {_pageCount}";
+        PreviousPageButton.IsEnabled = navigationPage > 0;
+        NextPageButton.IsEnabled = navigationPage < _pageCount - 1;
 
         PageDotsPanel.Children.Clear();
         for (var pageIndex = 0; pageIndex < _pageCount; pageIndex++)
@@ -573,7 +588,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 Tag = pageIndex,
                 ToolTip = $"Страница {pageIndex + 1}"
             };
-            if (pageIndex == _currentPage)
+            if (pageIndex == navigationPage)
             {
                 dot.Width = 20;
                 dot.Opacity = 1;
@@ -587,110 +602,76 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void NavigateToPage(int requestedPage)
     {
         var targetPage = Math.Clamp(requestedPage, 0, _pageCount - 1);
-        if (targetPage == _currentPage && !_isPageAnimating)
+        if (targetPage == _currentPage)
             return;
 
-        if (_isPageAnimating)
+        StopPageAnimation();
+        ++_pageSnapshotGeneration;
+        _lastPageDirection = targetPage > _currentPage ? 1 : -1;
+
+        if (_pageSnapshotCache.TryGetValue(targetPage, out var snapshot))
         {
-            _queuedPage = targetPage;
+            ShowCachedPage(targetPage, snapshot);
             return;
         }
-
-        // Основной быстрый путь: обе страницы уже существуют как готовые
-        // растровые кадры. Ни разметка плиток, ни WebView2, ни эффекты теней
-        // больше не попадают в критический путь обработки колеса мыши.
-        if (_pageSnapshotCache.TryGetValue(_currentPage, out var outgoingSnapshot)
-            && _pageSnapshotCache.TryGetValue(targetPage, out var incomingSnapshot))
-        {
-            NavigateWithPageSnapshots(targetPage, outgoingSnapshot, incomingSnapshot);
-            return;
-        }
-
-        _isPageAnimating = true;
-        _queuedPage = null;
-        var generation = ++_pageAnimationGeneration;
-        var direction = targetPage > _currentPage ? 1 : -1;
-        _lastPageDirection = direction;
-        var travel = Math.Max(160, PageViewport.ActualWidth + _settings.GridSpacing);
-
-        // Если соседняя страница уже готовилась в простое, используем её живое
-        // дерево и прогретые снимки WebView2. Иначе создаём слой без блокирующего
-        // UpdateLayout — первый кадр всё равно начинается сразу.
-        if (_preparedIncomingPage != targetPage)
-            PopulateIncomingPage(targetPage);
-        _preparedIncomingPage = -1;
-        ++_pagePreloadGeneration;
-
-        _pageTranslate.BeginAnimation(TranslateTransform.XProperty, null);
-        _incomingPageTranslate.BeginAnimation(TranslateTransform.XProperty, null);
-        _pageTranslate.X = 0;
-        _incomingPageTranslate.X = direction * travel;
-        LauncherItems.CacheMode = CreatePageCache();
-        IncomingLauncherItems.CacheMode = CreatePageCache();
-        IncomingLauncherItems.Visibility = Visibility.Visible;
 
         _currentPage = targetPage;
-        PageViewport.IsHitTestVisible = false;
-        PageNavigator.IsHitTestVisible = false;
+        PopulateCurrentPage();
+        SetDraggedTileOpacity();
+        UpdatePageNavigator();
+        ScheduleAllPagesPreRender();
+    }
+
+    private void ShowCachedPage(int targetPage, BitmapSource snapshot)
+    {
+        var generation = ++_pageAnimationGeneration;
+        _currentPage = targetPage;
+        _incomingSnapshotTranslate.BeginAnimation(TranslateTransform.XProperty, null);
+        _incomingSnapshotTranslate.X = _lastPageDirection * 22;
+        IncomingPageSnapshot.Source = snapshot;
+        IncomingPageSnapshot.Visibility = Visibility.Visible;
+        IncomingPageSnapshot.Opacity = 0.58;
+        LauncherItems.Visibility = Visibility.Hidden;
         UpdatePageNavigator();
 
-        var easing = new QuinticEase { EasingMode = EasingMode.EaseOut };
-        var duration = TimeSpan.FromMilliseconds(340);
-        var slideOut = new DoubleAnimation(0, -direction * travel, duration)
+        // The ready bitmap keeps the transition independent from live widgets.
+        // A new gesture cancels this animation immediately through StopPageAnimation.
+        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var duration = TimeSpan.FromMilliseconds(85);
+        var slide = new DoubleAnimation(_incomingSnapshotTranslate.X, 0, duration)
         {
             EasingFunction = easing,
             FillBehavior = FillBehavior.HoldEnd
         };
-        var slideIn = new DoubleAnimation(direction * travel, 0, duration)
+        var fade = new DoubleAnimation(0.58, 1, duration)
         {
             EasingFunction = easing,
             FillBehavior = FillBehavior.HoldEnd
         };
-
-        slideIn.Completed += (_, _) =>
+        slide.Completed += (_, _) =>
         {
             if (generation != _pageAnimationGeneration)
                 return;
 
-            // Входящий слой уже закрывает область просмотра. Обновляем основной
-            // слой, пока он всё ещё удерживается за границей окна. Затем в одном
-            // render pass скрываем временный слой и возвращаем основной на X=0.
-            // Это исключает даже один кадр с наложением полупрозрачных плиток.
             PopulateCurrentPage();
-            LauncherItems.UpdateLayout();
             SetDraggedTileOpacity();
-
             Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
             {
                 if (generation != _pageAnimationGeneration)
                     return;
 
-                // Порядок важен: сначала скрываем верхнюю копию, затем возвращаем
-                // нижнюю. Dispatcher применит обе операции к одному кадру.
-                IncomingLauncherItems.Visibility = Visibility.Collapsed;
-                _incomingPageTranslate.BeginAnimation(TranslateTransform.XProperty, null);
-                _incomingPageTranslate.X = 0;
-                _pageTranslate.BeginAnimation(TranslateTransform.XProperty, null);
-                _pageTranslate.X = 0;
-                IncomingPageItems.Clear();
-                LauncherItems.CacheMode = null;
-                IncomingLauncherItems.CacheMode = null;
-                _isPageAnimating = false;
-                PageViewport.IsHitTestVisible = true;
-                PageNavigator.IsHitTestVisible = true;
-                UpdatePageNavigator();
+                _incomingSnapshotTranslate.BeginAnimation(TranslateTransform.XProperty, null);
+                _incomingSnapshotTranslate.X = 0;
+                IncomingPageSnapshot.BeginAnimation(OpacityProperty, null);
+                IncomingPageSnapshot.Opacity = 1;
+                LauncherItems.Visibility = Visibility.Visible;
+                IncomingPageSnapshot.Source = null;
+                IncomingPageSnapshot.Visibility = Visibility.Collapsed;
                 ScheduleAllPagesPreRender();
-
-                if (_queuedPage is int queued && queued != _currentPage)
-                {
-                    _queuedPage = null;
-                    NavigateToPage(queued);
-                }
             }));
         };
-
-        _pageTranslate.BeginAnimation(TranslateTransform.XProperty, slideOut);
-        _incomingPageTranslate.BeginAnimation(TranslateTransform.XProperty, slideIn);
+        _incomingSnapshotTranslate.BeginAnimation(TranslateTransform.XProperty, slide);
+        IncomingPageSnapshot.BeginAnimation(OpacityProperty, fade);
     }
 
     private void NavigateWithPageSnapshots(
@@ -726,11 +707,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         _currentPage = targetPage;
         PageViewport.IsHitTestVisible = false;
-        PageNavigator.IsHitTestVisible = false;
         UpdatePageNavigator();
 
         var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
-        var duration = TimeSpan.FromMilliseconds(175);
+        var duration = TimeSpan.FromMilliseconds(20);
         var slideOut = new DoubleAnimation(0, -direction * travel, duration)
         {
             EasingFunction = easing,
@@ -755,7 +735,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             _incomingSnapshotTranslate.X = 0;
             _isPageAnimating = false;
             PageViewport.IsHitTestVisible = true;
-            PageNavigator.IsHitTestVisible = true;
             UpdatePageNavigator();
 
             // Сначала пользователь получает готовый кадр, затем в простое WPF
@@ -823,6 +802,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
         if (IncomingPageSnapshot is not null)
         {
+            IncomingPageSnapshot.BeginAnimation(OpacityProperty, null);
+            IncomingPageSnapshot.Opacity = 1;
             IncomingPageSnapshot.Source = null;
             IncomingPageSnapshot.Visibility = Visibility.Collapsed;
         }
@@ -900,33 +881,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             await Task.Delay(35);
         }
 
-        // Первый проход уже сделал мгновенно доступными все страницы. Второй
-        // проход лишь повышает качество кадров с документами и WebView2; он
-        // никогда не блокирует перелистывание и может быть безопасно прерван.
-        foreach (var page in pages.Where(page => page != _currentPage
-                                                 && !_refinedPageSnapshots.Contains(page)))
-        {
-            if (generation != _pageSnapshotGeneration || _isPageAnimating || !IsLoaded)
-                return;
-
-            PopulateIncomingPage(page);
-            _preparedIncomingPage = page;
-            _incomingPageTranslate.X = (page > _currentPage ? 1 : -1)
-                * Math.Max(160, PageViewport.ActualWidth + _settings.GridSpacing);
-            IncomingLauncherItems.Visibility = Visibility.Visible;
-            await Dispatcher.Yield(DispatcherPriority.Render);
-
-            if (!await WaitForWidgetContentAsync(IncomingLauncherItems, generation))
-                continue;
-            var refined = CapturePageSnapshot(IncomingLauncherItems, _incomingPageTranslate);
-            if (refined is not null)
-            {
-                _pageSnapshotCache[page] = refined;
-                _refinedPageSnapshots.Add(page);
-            }
-            await Task.Delay(35);
-        }
-
         if (generation != _pageSnapshotGeneration || _isPageAnimating)
             return;
 
@@ -936,41 +890,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _incomingPageTranslate.X = 0;
     }
 
-    private async Task<bool> WaitForWidgetContentAsync(
-        DependencyObject root,
-        int generation)
-    {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(2.4);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (generation != _pageSnapshotGeneration || _isPageAnimating || !IsLoaded)
-                return false;
-
-            var pending = EnumerateVisualChildren<WebWidgetView>(root)
-                .Any(view => view.DataContext is LauncherItem item
-                             && item.HasWidgetDocumentContent
-                             && !view.IsViewportCurrent(item));
-            if (!pending)
-                return true;
-
-            await Task.Delay(90);
-        }
-
-        return false;
-    }
-
-    private static IEnumerable<T> EnumerateVisualChildren<T>(DependencyObject root)
-        where T : DependencyObject
-    {
-        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
-        {
-            var child = VisualTreeHelper.GetChild(root, index);
-            if (child is T match)
-                yield return match;
-            foreach (var descendant in EnumerateVisualChildren<T>(child))
-                yield return descendant;
-        }
-    }
 
     private BitmapSource? CapturePageSnapshot(
         FrameworkElement visual,
@@ -981,10 +900,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (width <= 1 || height <= 1 || _pageCount <= 0)
             return null;
 
-        // Полный кэш всех страниц ограничен примерно 96 МБ. До достижения
+        // Полный кэш всех страниц ограничен примерно 160 МБ. До достижения
         // лимита кадры хранятся 1:1; при очень большом числе страниц разрешение
         // плавно уменьшается, но мгновенное перелистывание сохраняется.
-        const double memoryBudget = 96d * 1024 * 1024;
+        const double memoryBudget = 160d * 1024 * 1024;
         var fullSizeBytes = width * height * 4d * _pageCount;
         var scale = fullSizeBytes <= memoryBudget
             ? 1d
@@ -1016,27 +935,19 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void Window_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        // Колесо перелистывает страницы в любой точке основного окна — над
-        // плитками, пустым местом, поиском или нижней панелью. При открытых
-        // настройках событие остаётся свободным для вертикального ScrollViewer.
-        if (SettingsPanel.Visibility == Visibility.Visible
+        // Панель настроек не модальна: её собственный ScrollViewer и числовые
+        // поля получают колесо только под курсором, а остальная страница остаётся
+        // доступной для навигации.
+        if (SettingsPanel.IsAncestorOf(e.OriginalSource as DependencyObject)
+            || FolderFlyoutLayer.Visibility == Visibility.Visible
             || FindVisualAncestor<WidgetLauncherGridView>(e.OriginalSource as DependencyObject) is not null
             || _pageCount <= 1)
             return;
 
-        // Высокоточные мыши и тачпады посылают целую пачку Wheel-событий за один
-        // жест. Раньше они выстраивали очередь из нескольких тяжёлых страниц.
-        // Пока идёт переход, просто поглощаем хвост уже начатого жеста.
-        if (_isPageAnimating)
-        {
-            e.Handled = true;
-            return;
-        }
-
-        // Реагируем на первый же импульс ролика. Повторные импульсы того же
-        // щелчка всё равно отсекаются флагом активной анимации.
+        // Каждый импульс меняет целевую страницу. Это позволяет одним жестом
+        // проскочить несколько страниц, пока текущий кадр ещё анимируется.
         var direction = e.Delta < 0 ? 1 : -1;
-        NavigateToPage(_currentPage + direction);
+        NavigateToPage((_queuedPage ?? _currentPage) + direction);
         e.Handled = true;
     }
 
@@ -1140,6 +1051,21 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_currentFolder is not null || !string.IsNullOrWhiteSpace(SearchBox.Text))
             return;
 
+        if (!WidgetGalleryDialog.TryPick(this, _settings.PluginLibrary, out var plugin, out var createBlank))
+            return;
+
+        if (plugin is not null)
+        {
+            AddPluginWidget(plugin);
+            return;
+        }
+
+        if (createBlank)
+            AddBlankWidget();
+    }
+
+    private void AddBlankWidget()
+    {
         var (availableColumns, availableRows) = GetGridDimensions();
         if (!WidgetSizePickerDialog.TryPick(
                 this,
@@ -1262,6 +1188,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         if (item.IsFolder)
         {
+            if (!_settings.OpenGroupsFullscreen)
+            {
+                OpenFolderFlyout(item);
+                return;
+            }
+
             _currentFolder = item;
             _currentPage = 0;
             if (string.IsNullOrEmpty(SearchBox.Text))
@@ -1299,6 +1231,55 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             SearchBox.Clear();
     }
 
+    private void OpenFolderFlyout(LauncherItem folder)
+    {
+        _flyoutFolder = folder;
+        FolderFlyoutItems.Clear();
+        foreach (var item in folder.Children)
+        {
+            UpdateDisplayMetrics(item);
+            FolderFlyoutItems.Add(item);
+        }
+
+        const double panelPadding = 24;
+        const double headerHeight = 42;
+        var maxWidth = Math.Max(GridCellWidth + panelPadding, PageViewport.ActualWidth * 0.8);
+        var maxHeight = Math.Max(GridCellHeight + headerHeight + panelPadding, PageViewport.ActualHeight * 0.8);
+        var maxColumns = Math.Max(1, (int)Math.Floor((maxWidth - panelPadding) / GridCellWidth));
+        var columns = Math.Min(maxColumns, Math.Max(1, (int)Math.Ceiling(Math.Sqrt(FolderFlyoutItems.Count))));
+        var rows = Math.Max(1, (int)Math.Ceiling(FolderFlyoutItems.Count / (double)columns));
+        FolderFlyoutColumns = columns;
+        OnPropertyChanged(nameof(FolderFlyoutColumns));
+        FolderFlyoutPanel.Width = Math.Min(maxWidth, columns * GridCellWidth + panelPadding);
+        FolderFlyoutPanel.Height = Math.Min(maxHeight, rows * GridCellHeight + headerHeight + panelPadding);
+        FolderFlyoutTitle.Text = $"{folder.Name} · {FolderFlyoutItems.Count}";
+        FolderFlyoutLayer.Visibility = Visibility.Visible;
+    }
+
+    private void CloseFolderFlyout()
+    {
+        FolderFlyoutLayer.Visibility = Visibility.Collapsed;
+        FolderFlyoutItems.Clear();
+        _flyoutFolder = null;
+    }
+
+    private void CloseFolderFlyout_Click(object sender, RoutedEventArgs e) => CloseFolderFlyout();
+
+    private void FolderFlyoutScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is not ScrollViewer scrollViewer)
+            return;
+
+        scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - e.Delta);
+        e.Handled = true;
+    }
+
+    private void FolderFlyoutTile_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: LauncherItem item })
+            ActivateItem(item);
+    }
+
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => RefreshItems(true);
 
     private void Tile_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -1324,7 +1305,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (e.IsActive)
         {
             _activeDragItem = e.Item;
-            _dragCommitted = false;
             _previewTargetId = null;
             StartDragGhost(e.Item, Mouse.GetPosition(this));
             return;
@@ -1337,7 +1317,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void WidgetChildGrid_LayoutChanged(object? sender, EventArgs e)
     {
-        _dragCommitted = true;
         SaveLayout();
     }
 
@@ -1374,7 +1353,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _pressedItem = null;
 
         _activeDragItem = dragged;
-        _dragCommitted = false;
         _previewTargetId = null;
         SetDraggedTileOpacity();
         StartDragGhost(dragged, current);
@@ -1438,7 +1416,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void StopDragGhost()
     {
         HideDropPlacementPreview();
-        ClearReorderPreviewTransforms();
+        ResetReorderPreview();
         ResetDropPreviewHitTest();
         if (!_dragGhostActive)
             return;
@@ -1457,6 +1435,21 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         DragGhostTranslate.Y = 0;
     }
 
+    private void UpdateDragGhostTransform()
+    {
+        const double cursorOffset = 20;
+        DragGhostTranslate.X = _dragGhostPosition.X - DragGhost.Width / 2 + cursorOffset;
+        DragGhostTranslate.Y = _dragGhostPosition.Y - DragGhost.Height / 2 + cursorOffset;
+
+        var speedRatio = Math.Clamp(_dragGhostVelocity.Length / 1350, 0, 1);
+        DragGhostRotate.Angle = Math.Clamp(_dragGhostVelocity.X / 105, -9, 9);
+        if (!DragGhostScale.HasAnimatedProperties)
+        {
+            DragGhostScale.ScaleX = 1 + speedRatio * 0.085;
+            DragGhostScale.ScaleY = 1 - speedRatio * 0.045;
+        }
+    }
+
     private void DragGhost_Rendering(object? sender, EventArgs e)
     {
         if (!_dragGhostActive || e is not RenderingEventArgs rendering)
@@ -1472,22 +1465,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _dragGhostVelocity += acceleration * delta;
         _dragGhostPosition += _dragGhostVelocity * delta;
         UpdateDragGhostTransform();
-
-    }
-
-    private void UpdateDragGhostTransform()
-    {
-        const double cursorOffset = 20;
-        DragGhostTranslate.X = _dragGhostPosition.X - DragGhost.Width / 2 + cursorOffset;
-        DragGhostTranslate.Y = _dragGhostPosition.Y - DragGhost.Height / 2 + cursorOffset;
-
-        var speedRatio = Math.Clamp(_dragGhostVelocity.Length / 1350, 0, 1);
-        DragGhostRotate.Angle = Math.Clamp(_dragGhostVelocity.X / 105, -9, 9);
-        if (!DragGhostScale.HasAnimatedProperties)
-        {
-            DragGhostScale.ScaleX = 1 + speedRatio * 0.085;
-            DragGhostScale.ScaleY = 1 - speedRatio * 0.045;
-        }
     }
 
     private void Window_PreviewDragOver(object sender, DragEventArgs e)
@@ -1718,9 +1695,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             return;
 
         ++_dropPreviewGeneration;
-        var wasVisible = DropPlacementPreview.Visibility == Visibility.Visible;
-        var oldX = DropPlacementTranslate.X;
-        var oldY = DropPlacementTranslate.Y;
         var targetX = placement.Column * GridCellWidth + _settings.GridSpacing / 2;
         var targetY = placement.Row * GridCellHeight + _settings.GridSpacing / 2;
 
@@ -1741,41 +1715,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         DropPlacementPreview.Visibility = Visibility.Visible;
         DropPlacementPreview.Opacity = 1;
         _dropPreviewPlacement = placement;
-
-        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
-        if (wasVisible)
-        {
-            DropPlacementTranslate.BeginAnimation(
-                TranslateTransform.XProperty,
-                new DoubleAnimation(oldX, targetX, TimeSpan.FromMilliseconds(115))
-                {
-                    EasingFunction = easing,
-                    FillBehavior = FillBehavior.Stop
-                });
-            DropPlacementTranslate.BeginAnimation(
-                TranslateTransform.YProperty,
-                new DoubleAnimation(oldY, targetY, TimeSpan.FromMilliseconds(115))
-                {
-                    EasingFunction = easing,
-                    FillBehavior = FillBehavior.Stop
-                });
-            return;
-        }
-
-        DropPlacementPreview.BeginAnimation(
-            OpacityProperty,
-            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(120))
-            {
-                EasingFunction = easing,
-                FillBehavior = FillBehavior.Stop
-            });
-        var scaleAnimation = new DoubleAnimation(0.92, 1, TimeSpan.FromMilliseconds(135))
-        {
-            EasingFunction = easing,
-            FillBehavior = FillBehavior.Stop
-        };
-        DropPlacementScale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnimation);
-        DropPlacementScale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnimation);
     }
 
     private void UpdateDropPlacementCells(DropPlacement placement)
@@ -1821,22 +1760,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_dropPreviewPlacement is null)
             return;
 
-        var generation = ++_dropPreviewGeneration;
+        ++_dropPreviewGeneration;
         _dropPreviewPlacement = null;
-        var fade = new DoubleAnimation(DropPlacementPreview.Opacity, 0, TimeSpan.FromMilliseconds(70))
-        {
-            FillBehavior = FillBehavior.Stop
-        };
-        fade.Completed += (_, _) =>
-        {
-            if (generation != _dropPreviewGeneration)
-                return;
-            DropPlacementPreview.BeginAnimation(OpacityProperty, null);
-            DropPlacementPreview.Opacity = 0;
-            DropPlacementPreview.Visibility = Visibility.Collapsed;
-            _dropPreviewPlacement = null;
-        };
-        DropPlacementPreview.BeginAnimation(OpacityProperty, fade);
+        DropPlacementPreview.BeginAnimation(OpacityProperty, null);
+        DropPlacementPreview.Opacity = 0;
+        DropPlacementPreview.Visibility = Visibility.Collapsed;
     }
 
     private void UpdateEdgePaging(Point point)
@@ -1857,23 +1785,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             return;
 
         _edgePageDirection = direction;
-        _edgePageTimer.Stop();
         LeftEdgeCue.Visibility = direction < 0 ? Visibility.Visible : Visibility.Collapsed;
         RightEdgeCue.Visibility = direction > 0 ? Visibility.Visible : Visibility.Collapsed;
         if (direction == 0)
             return;
-
-        _edgePageTimer.Interval = TimeSpan.FromMilliseconds(520);
-        _edgePageTimer.Start();
-    }
-
-    private void EdgePageTimer_Tick(object? sender, EventArgs e)
-    {
-        if (!_dragGhostActive || _edgePageDirection == 0)
-        {
-            SetEdgePageDirection(0);
-            return;
-        }
 
         var basePage = _queuedPage ?? _currentPage;
         var targetPage = Math.Clamp(basePage + _edgePageDirection, 0, _pageCount - 1);
@@ -1884,7 +1799,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
 
         NavigateToPage(targetPage);
-        _edgePageTimer.Interval = TimeSpan.FromMilliseconds(760);
     }
 
     private void Tile_DragOver(object sender, DragEventArgs e)
@@ -1903,6 +1817,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             var insertAfter = e.GetPosition(targetButton).X > targetButton.ActualWidth / 2;
             PreviewReorder(source, target, insertAfter);
+        }
+        else
+        {
+            ResetReorderPreview();
         }
 
         e.Handled = true;
@@ -1944,7 +1862,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             target.WidgetContentType = WidgetContentKind.LauncherGrid;
             widgetSourceCollection.Remove(source);
             target.Children.Add(source);
-            _dragCommitted = true;
             SaveAndRefresh();
             ShowToast($"«{source.Name}» добавлено в виджет «{target.Name}»");
             e.Handled = true;
@@ -1955,7 +1872,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             if (_previewTargetId.HasValue)
             {
-                _dragCommitted = true;
                 SaveLayout();
             }
             e.Handled = true;
@@ -1973,7 +1889,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
             sourceCollection.Remove(source);
             target.Children.Add(source);
-            _dragCommitted = true;
             SaveAndRefresh();
             ShowToast($"«{source.Name}» добавлено в «{target.Name}»");
         }
@@ -1995,7 +1910,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 targetIndex++;
 
             targetCollection.Insert(Math.Clamp(targetIndex, 0, targetCollection.Count), source);
-            _dragCommitted = true;
             SaveAndRefresh();
         }
 
@@ -2004,6 +1918,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void ItemsArea_DragOver(object sender, DragEventArgs e)
     {
+        ResetReorderPreview();
         e.Effects = e.Data.GetDataPresent(InternalDragFormat) || e.Data.GetDataPresent(DataFormats.FileDrop)
             ? DragDropEffects.Move
             : DragDropEffects.None;
@@ -2078,7 +1993,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (ReferenceEquals(sourceCollection, targetCollection) && sourceIndex < insertionIndex)
             insertionIndex--;
         targetCollection.Insert(Math.Clamp(insertionIndex, 0, targetCollection.Count), source);
-        _dragCommitted = true;
         SaveAndRefresh();
     }
 
@@ -2102,14 +2016,53 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             0,
             Math.Max(0, rows - rowSpan));
 
+        var displacedItems = MoveDisplacedItemsToNextPage(widget, columns, rows);
         widget.WidgetPage = _currentPage;
         widget.WidgetColumn = column;
         widget.WidgetRow = row;
-        _dragCommitted = true;
         SaveAndRefresh();
         AnimateTileReflow(oldPositions);
         NavigateToPage(FindPageForItem(widget.Id));
-        ShowToast($"«{widget.Name}» закреплён в новой позиции");
+        ShowToast(displacedItems == 0
+            ? $"«{widget.Name}» закреплён в новой позиции"
+            : $"«{widget.Name}» закреплён: значков перенесено на следующую страницу — {displacedItems}");
+    }
+
+    private int MoveDisplacedItemsToNextPage(LauncherItem widget, int columns, int rows)
+    {
+        var pageItems = GetPageItems(_currentPage);
+        var regularItems = pageItems
+            .Where(item => !item.IsWidget)
+            .OrderBy(item => item.LayoutRow)
+            .ThenBy(item => item.LayoutColumn)
+            .ToList();
+        var occupiedWidgetCells = pageItems
+            .Where(item => item.IsWidget && !ReferenceEquals(item, widget))
+            .Sum(item =>
+            {
+                var (columnSpan, rowSpan) = GridPackingService.GetSpan(item);
+                return columnSpan * rowSpan;
+            });
+        var widgetCells = Math.Max(1, widget.WidgetColumns) * Math.Max(1, widget.WidgetRows);
+        var remainingSlots = Math.Max(0, columns * rows - occupiedWidgetCells - widgetCells);
+        var displacedItems = regularItems
+            .Skip(Math.Min(regularItems.Count, remainingSlots))
+            .ToList();
+
+        var nextPageFirstItem = _pages
+            .Skip(_currentPage + 1)
+            .SelectMany(page => page.Items)
+            .FirstOrDefault(item => !item.IsWidget);
+        var insertionIndex = nextPageFirstItem is null
+            ? _settings.Items.Count
+            : _settings.Items.IndexOf(nextPageFirstItem);
+
+        foreach (var item in displacedItems)
+            _settings.Items.Remove(item);
+        foreach (var item in displacedItems)
+            _settings.Items.Insert(Math.Min(insertionIndex++, _settings.Items.Count), item);
+
+        return displacedItems.Count;
     }
 
     private void Window_DragOver(object sender, DragEventArgs e)
@@ -2234,6 +2187,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _reorderPreviewTransforms.Clear();
     }
 
+    private void ResetReorderPreview()
+    {
+        _previewTargetId = null;
+        _previewInsertAfter = false;
+        ClearReorderPreviewTransforms();
+    }
+
     private Dictionary<Guid, Point> CaptureTilePositions()
     {
         LauncherItems.UpdateLayout();
@@ -2287,7 +2247,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_activeDragItem is null)
             return;
         if (LauncherItems.ItemContainerGenerator.ContainerFromItem(_activeDragItem) is FrameworkElement container)
-            container.Opacity = 0.28;
+            container.Opacity = 0;
     }
 
     private ObservableCollection<LauncherItem>? FindParentCollection(LauncherItem target)
@@ -2559,6 +2519,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             return;
         _settings.HideAfterLaunch = HideAfterLaunchCheckBox.IsChecked == true;
         _settings.AlwaysOnTop = AlwaysOnTopCheckBox.IsChecked == true;
+        _settings.OpenGroupsFullscreen = OpenGroupsFullscreenCheckBox.IsChecked == true;
         Topmost = _settings.AlwaysOnTop;
         UpdatePinButton();
         SaveLayout();
@@ -2776,6 +2737,90 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         SaveLayout();
     }
 
+    private void OpenPluginLibrary_Click(object sender, RoutedEventArgs e)
+    {
+        Directory.CreateDirectory(PluginLibraryService.LibraryPath);
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = PluginLibraryService.LibraryPath,
+            UseShellExecute = true
+        });
+    }
+
+    private void RefreshPluginLibrary_Click(object sender, RoutedEventArgs e)
+    {
+        PluginLibraryService.Refresh(_settings.PluginLibrary);
+        PluginLibraryEmptyText.Visibility = _settings.PluginLibrary.Count == 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        SaveLayout();
+    }
+
+    private void PluginEnabledChanged(object sender, RoutedEventArgs e)
+    {
+        if (_initializing || sender is not CheckBox { DataContext: PluginLibraryEntry entry })
+            return;
+
+        entry.IsEnabled = ((CheckBox)sender).IsChecked == true;
+        SaveLayout();
+    }
+
+    private void AddPluginWidget_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: PluginLibraryEntry plugin })
+            return;
+
+        AddPluginWidget(plugin);
+    }
+
+    private void AddPluginWidget(PluginLibraryEntry plugin)
+    {
+        if (!plugin.IsEnabled
+            || !plugin.IsInstalled
+            || _currentFolder is not null
+            || !string.IsNullOrWhiteSpace(SearchBox.Text))
+            return;
+
+        var (availableColumns, availableRows) = GetGridDimensions();
+        var columns = Math.Min(plugin.DefaultColumns, availableColumns);
+        var rows = Math.Min(plugin.DefaultRows, availableRows);
+        var contentPath = Path.Combine(plugin.DirectoryPath, plugin.ContentFile);
+        if (!File.Exists(contentPath))
+        {
+            ShowToast("Файл плагина не найден. Обновите библиотеку.");
+            return;
+        }
+
+        var widget = new LauncherItem
+        {
+            Kind = LauncherItemKind.Widget,
+            Name = plugin.Name,
+            WidgetRows = rows,
+            WidgetColumns = columns,
+            WidgetPage = _currentPage,
+            WidgetColumn = 0,
+            WidgetRow = 0,
+            WidgetContentType = WidgetContentKind.WebPage,
+            WidgetUrl = new Uri(contentPath).AbsoluteUri,
+            WidgetShowTitle = true
+        };
+        UpdateDisplayMetrics(widget);
+        _settings.Items.Add(widget);
+        SaveAndRefresh();
+        NavigateToPage(FindPageForItem(widget.Id));
+        ShowToast($"Добавлен виджет «{plugin.Name}»");
+    }
+
+    private void WidgetBackgroundSettingChanged(object sender, RoutedEventArgs e)
+    {
+        if (_initializing)
+            return;
+
+        _settings.WidgetBackgroundMatchesTiles = WidgetBackgroundMatchesTilesCheckBox.IsChecked == true;
+        OnPropertyChanged(nameof(WidgetBackgroundMatchesTiles));
+        SaveLayout();
+    }
+
     private void FolderThumbnailSizeChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_initializing)
@@ -2798,6 +2843,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             TileOpacitySlider.Value = EffectiveTileOpacity * 100;
             _initializing = false;
         }
+        ApplyTheme(_settings.LightTheme);
+        SaveLayout();
+    }
+
+    private void VisualProfileChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_initializing || VisualProfileCombo.SelectedValue is not string profile)
+            return;
+
+        _settings.VisualProfile = profile;
         ApplyTheme(_settings.LightTheme);
         SaveLayout();
     }
@@ -2826,6 +2881,35 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
 
         _settings.TileColor = selected;
+        OnPropertyChanged(nameof(EffectiveTileColor));
+        ApplyTheme(_settings.LightTheme);
+        SaveLayout();
+    }
+
+    private void ChoosePositiveActionColor_Click(object sender, RoutedEventArgs e)
+    {
+        var selected = ColorPickerDialog.Show(this, "Позитивные действия", EffectivePositiveActionColor, _settings.SavedColors);
+        if (selected is null)
+        {
+            SaveLayout();
+            return;
+        }
+
+        _settings.PositiveActionColor = selected;
+        ApplyTheme(_settings.LightTheme);
+        SaveLayout();
+    }
+
+    private void ChooseNegativeActionColor_Click(object sender, RoutedEventArgs e)
+    {
+        var selected = ColorPickerDialog.Show(this, "Негативные действия", EffectiveNegativeActionColor, _settings.SavedColors);
+        if (selected is null)
+        {
+            SaveLayout();
+            return;
+        }
+
+        _settings.NegativeActionColor = selected;
         ApplyTheme(_settings.LightTheme);
         SaveLayout();
     }
@@ -2877,17 +2961,25 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         _settings.WindowBackgroundColor = null;
         _settings.TileColor = null;
+        _settings.PositiveActionColor = null;
+        _settings.NegativeActionColor = null;
         _settings.TileOpacity = null;
         _settings.WindowOpacity = 1.0;
         _settings.TileShadowEnabled = true;
         _settings.TileShadowOpacity = 0.25;
+        _settings.VisualProfile = "Glass";
+        _settings.WidgetBackgroundMatchesTiles = true;
 
         _initializing = true;
         TileOpacitySlider.Value = EffectiveTileOpacity * 100;
         WindowOpacitySlider.Value = 100;
         TileShadowCheckBox.IsChecked = true;
         TileShadowOpacitySlider.Value = 25;
+        VisualProfileCombo.SelectedValue = _settings.VisualProfile;
+        WidgetBackgroundMatchesTilesCheckBox.IsChecked = true;
         _initializing = false;
+        OnPropertyChanged(nameof(EffectiveTileColor));
+        OnPropertyChanged(nameof(WidgetBackgroundMatchesTiles));
         Opacity = 1;
 
         ApplyTheme(_settings.LightTheme);
@@ -2955,14 +3047,33 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void ApplyTheme(bool light)
     {
         var tileOpacity = EffectiveTileOpacity;
+        var visualProfile = _settings.VisualProfile is "Solid" or "Soft" ? _settings.VisualProfile : "Glass";
+        var panelColor = visualProfile switch
+        {
+            "Solid" => light ? "#FFF8F9FC" : "#FF151820",
+            "Soft" => light ? "#F2F7F8FC" : "#F2191D27",
+            _ => light ? "#EFFFFFFF" : "#E6171A22"
+        };
+        var tileColor = visualProfile switch
+        {
+            "Solid" => light ? "#FFFFFFFF" : "#FF20242E",
+            "Soft" => light ? "#F9FFFFFF" : "#D91E222D",
+            _ => light ? "#F2FFFFFF" : "#16FFFFFF"
+        };
+        var tileHoverColor = visualProfile switch
+        {
+            "Solid" => light ? "#FFFDFDFF" : "#FF292E3A",
+            "Soft" => light ? "#FFFFFFFF" : "#F52A2F3B",
+            _ => light ? "#FFFFFFFF" : "#22FFFFFF"
+        };
         Resources["WindowBrush"] = Brush(EffectiveWindowColor);
-        Resources["PanelBrush"] = Brush(light ? "#FFFFFFFF" : "#FF171A22");
+        Resources["PanelBrush"] = Brush(panelColor);
         Resources["TextBrush"] = Brush(light ? "#FF171A24" : "#FFF7F8FC");
         Resources["MutedTextBrush"] = Brush(light ? "#8A252A38" : "#A3FFFFFF");
         Resources["WindowBorderBrush"] = Brush(light ? "#16101828" : "#20FFFFFF");
         Resources["ColorSwatchBorderBrush"] = Brush(light ? "#5C101828" : "#70FFFFFF");
-        Resources["TileBrush"] = Brush(light ? "#FFFFFFFF" : "#0CFFFFFF");
-        Resources["TileHoverBrush"] = Brush(light ? "#FFFFFFFF" : "#18FFFFFF");
+        Resources["TileBrush"] = Brush(tileColor);
+        Resources["TileHoverBrush"] = Brush(tileHoverColor);
         Resources["LauncherTileBrush"] = Brush(EffectiveTileColor, tileOpacity);
         Resources["LauncherTileHoverBrush"] = Brush(EffectiveTileColor, Math.Min(1, tileOpacity + (light ? 0.04 : 0.08)));
         Resources["TileBorderBrush"] = Brush(light ? "#17101828" : "#18FFFFFF");
@@ -2978,11 +3089,31 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             Color.FromRgb(62, 126, 255),
             new Point(0, 0),
             new Point(1, 1));
+        Resources["PositiveSolidBrush"] = Brush(EffectivePositiveActionColor);
+        Resources["PositiveBrush"] = new LinearGradientBrush(
+            (Color)ColorConverter.ConvertFromString(EffectivePositiveActionColor)!,
+            Color.FromRgb(55, 183, 126),
+            new Point(0, 0),
+            new Point(1, 1));
+        Resources["NegativeSolidBrush"] = Brush(EffectiveNegativeActionColor);
+        ApplyThemeWidgetBackgrounds(_settings.Items, light);
         UpdateTileShadowEffect();
         UpdateAppearanceLabels();
         UpdatePinButton();
         Background = (System.Windows.Media.Brush)Resources["WindowBrush"];
         ApplyNativeWindowStyle();
+    }
+
+    private static void ApplyThemeWidgetBackgrounds(IEnumerable<LauncherItem> items, bool light)
+    {
+        var defaultWidgetColor = light ? "#FFF7F9FD" : "#242730";
+        foreach (var item in items)
+        {
+            if (item.IsWidget)
+                item.ApplyThemeWidgetBackground(defaultWidgetColor);
+            if (item.IsFolder || item.IsWidget)
+                ApplyThemeWidgetBackgrounds(item.Children, light);
+        }
     }
 
     private void ApplyNativeWindowStyle()
@@ -2993,8 +3124,17 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string EffectiveWindowColor
         => NormalizeColor(_settings.WindowBackgroundColor, _settings.LightTheme ? "#F7F8FC" : "#101218");
 
-    private string EffectiveTileColor
+    public string EffectiveTileColor
         => NormalizeColor(_settings.TileColor, "#FFFFFF");
+
+    public bool WidgetBackgroundMatchesTiles
+        => _settings.WidgetBackgroundMatchesTiles;
+
+    private string EffectivePositiveActionColor
+        => NormalizeColor(_settings.PositiveActionColor, "#27B878");
+
+    private string EffectiveNegativeActionColor
+        => NormalizeColor(_settings.NegativeActionColor, "#E25662");
 
     private double EffectiveTileOpacity
         => Math.Clamp(_settings.TileOpacity ?? (_settings.LightTheme ? 1.0 : 0.10), 0.05, 1.0);
@@ -3012,8 +3152,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         TileOpacityValueText.Text = $"{EffectiveTileOpacity * 100:0}%";
         WindowOpacityValueText.Text = $"{_settings.WindowOpacity * 100:0}%";
         TileShadowOpacityValueText.Text = $"{_settings.TileShadowOpacity * 100:0}%";
+        PositiveActionColorValueText.Text = EffectivePositiveActionColor;
+        NegativeActionColorValueText.Text = EffectiveNegativeActionColor;
         WindowColorSwatch.Background = Brush(EffectiveWindowColor);
         TileColorSwatch.Background = Brush(EffectiveTileColor);
+        PositiveActionColorSwatch.Background = Brush(EffectivePositiveActionColor);
+        NegativeActionColorSwatch.Background = Brush(EffectiveNegativeActionColor);
     }
 
     private void UpdateTileShadowEffect()

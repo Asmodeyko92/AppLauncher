@@ -1,0 +1,82 @@
+<Window x:Class="AppLauncher.Dialogs.WidgetGalleryDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Галерея виджетов" Width="720" Height="510" MinWidth="600" MinHeight="430"
+        WindowStyle="None" ResizeMode="NoResize" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource GallerySurfaceBrush}" ShowInTaskbar="False"
+        UseLayoutRounding="True" SnapsToDevicePixels="True">
+    <Window.Resources>
+        <SolidColorBrush x:Key="GallerySurfaceBrush" Color="#FF181B24"/>
+        <SolidColorBrush x:Key="GalleryCardBrush" Color="#FF20232D"/>
+        <SolidColorBrush x:Key="GalleryTextBrush" Color="#FFFFFFFF"/>
+        <SolidColorBrush x:Key="GalleryMutedBrush" Color="#A8FFFFFF"/>
+        <SolidColorBrush x:Key="GalleryBorderBrush" Color="#30FFFFFF"/>
+        <SolidColorBrush x:Key="GalleryAccentBrush" Color="#FF7569FF"/>
+        <Style x:Key="GalleryButton" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource GalleryCardBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource GalleryBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="12" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource GalleryAccentBrush}"/><Setter TargetName="Surface" Property="Background" Value="#187569FF"/></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.62"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.38"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Border Padding="24" Background="{DynamicResource GallerySurfaceBrush}" BorderBrush="{DynamicResource GalleryBorderBrush}" BorderThickness="1" CornerRadius="12">
+        <Grid>
+            <Grid.RowDefinitions><RowDefinition Height="58"/><RowDefinition Height="*"/><RowDefinition Height="44"/></Grid.RowDefinitions>
+            <Grid>
+                <StackPanel>
+                    <TextBlock Text="Галерея виджетов" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="23" FontWeight="SemiBold" Foreground="{DynamicResource GalleryTextBrush}"/>
+                    <TextBlock Text="Выберите сохранённый шаблон или создайте пустой виджет" Margin="0,4,0,0" FontSize="11.5" Foreground="{DynamicResource GalleryMutedBrush}"/>
+                </StackPanel>
+                <Button HorizontalAlignment="Right" Width="38" Height="38" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource GalleryTextBrush}"
+                        Content="&#xE8BB;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Click="Close_Click"/>
+            </Grid>
+            <ScrollViewer Grid.Row="1" Margin="0,16,0,10" VerticalScrollBarVisibility="Auto">
+                <WrapPanel>
+                    <Button Width="205" Height="176" Margin="0,0,12,12" Style="{StaticResource GalleryButton}" Click="CreateBlank_Click">
+                        <StackPanel>
+                            <Border Width="42" Height="42" CornerRadius="12" Background="{DynamicResource GalleryAccentBrush}" HorizontalAlignment="Left">
+                                <TextBlock Text="&#xE710;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="White" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="Пустой виджет" Margin="0,14,0,0" FontWeight="SemiBold" Foreground="{DynamicResource GalleryTextBrush}"/>
+                            <TextBlock Text="Выберите любую область сетки" Margin="0,5,0,0" FontSize="10.5" TextWrapping="Wrap" Foreground="{DynamicResource GalleryMutedBrush}"/>
+                        </StackPanel>
+                    </Button>
+                    <ItemsControl ItemsSource="{Binding Plugins}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Width="205" Height="176" Margin="0,0,12,12" Style="{StaticResource GalleryButton}" Click="CreatePlugin_Click">
+                                    <StackPanel>
+                                        <Border Width="42" Height="42" CornerRadius="12" Background="#287569FF" HorizontalAlignment="Left">
+                                            <TextBlock Text="&#xE8B7;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource GalleryAccentBrush}" FontSize="19" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding Name}" Margin="0,14,0,0" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource GalleryTextBrush}"/>
+                                        <TextBlock Text="{Binding Description}" Margin="0,5,0,0" FontSize="10.5" TextWrapping="Wrap" MaxHeight="34" Foreground="{DynamicResource GalleryMutedBrush}"/>
+                                        <TextBlock Text="{Binding SizeLabel}" Margin="0,7,0,0" FontSize="10" Foreground="{DynamicResource GalleryMutedBrush}"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </WrapPanel>
+            </ScrollViewer>
+            <TextBlock Grid.Row="2" Text="Сохранённые шаблоны доступны без настройки и всегда используют локальные файлы." VerticalAlignment="Center" FontSize="10.5" Foreground="{DynamicResource GalleryMutedBrush}"/>
+        </Grid>
+    </Border>
+</Window>

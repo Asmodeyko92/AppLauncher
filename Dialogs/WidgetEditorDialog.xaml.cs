@@ -45,6 +45,7 @@ public partial class WidgetEditorDialog : Window
         _draft = CreateDraft(source);
         DataContext = _draft;
         var darkMode = ApplyOwnerTheme(owner);
+        SetPreviewWidgetSize(owner);
         SourceInitialized += (_, _) => NativeWindowService.ApplyModernWindowStyle(
             new WindowInteropHelper(this).Handle,
             darkMode);
@@ -117,6 +118,7 @@ public partial class WidgetEditorDialog : Window
             WidgetDisplayMode = source.WidgetDisplayMode,
             WidgetFolderPath = source.WidgetFolderPath,
             WidgetBackgroundColor = source.WidgetBackgroundColor,
+            WidgetBackgroundFollowsTheme = source.WidgetBackgroundFollowsTheme,
             Children = new ObservableCollection<LauncherItem>(source.Children.Select(CloneLauncherItem))
         };
 
@@ -129,12 +131,18 @@ public partial class WidgetEditorDialog : Window
         Resources["DialogControlBrush"] = GetOwnerBrush(owner, "TileBrush", "#15FFFFFF");
         Resources["DialogHoverBrush"] = GetOwnerBrush(owner, "HoverBrush", "#17FFFFFF");
         Resources["DialogAccentBrush"] = GetOwnerBrush(owner, "AccentSolidBrush", "#6E62FF");
+        Resources["DialogPositiveBrush"] = GetOwnerBrush(owner, "PositiveSolidBrush", "#27B878");
+        Resources["DialogNegativeBrush"] = GetOwnerBrush(owner, "NegativeSolidBrush", "#E25662");
+        Resources["PositiveSolidBrush"] = GetOwnerBrush(owner, "PositiveSolidBrush", "#27B878");
+        Resources["NegativeSolidBrush"] = GetOwnerBrush(owner, "NegativeSolidBrush", "#E25662");
         Resources["AccentSolidBrush"] = GetOwnerBrush(owner, "AccentSolidBrush", "#6E62FF");
         Resources["HoverBrush"] = GetOwnerBrush(owner, "HoverBrush", "#17FFFFFF");
         Resources["AccentBrush"] = owner.Resources["AccentBrush"] ?? GetOwnerBrush(owner, "AccentSolidBrush", "#6E62FF");
         Resources["SwitchOffBrush"] = GetOwnerBrush(owner, "SwitchOffBrush", "#20FFFFFF");
         Resources["TileBorderBrush"] = GetOwnerBrush(owner, "TileBorderBrush", "#20FFFFFF");
         Resources["TextBrush"] = GetOwnerBrush(owner, "TextBrush", "#FFFFFF");
+        Resources["TileBrush"] = GetOwnerBrush(owner, "TileBrush", "#15FFFFFF");
+        Resources["SearchBrush"] = GetOwnerBrush(owner, "SearchBrush", "#0AFFFFFF");
 
         if (Resources["DialogSurfaceBrush"] is not SolidColorBrush surface)
             return true;
@@ -149,6 +157,21 @@ public partial class WidgetEditorDialog : Window
         var fallbackBrush = (SolidColorBrush)new BrushConverter().ConvertFromString(fallback)!;
         fallbackBrush.Freeze();
         return fallbackBrush;
+    }
+
+    private void SetPreviewWidgetSize(Window owner)
+    {
+        var tileWidth = owner is MainWindow mainWindow ? mainWindow.TileSize : 130d;
+        var tileHeight = owner is MainWindow window ? window.TileHeight : 138d;
+        var spacing = owner is MainWindow launcher
+            ? Math.Max(0, launcher.GridCellWidth - launcher.TileSize)
+            : 12d;
+        var width = _draft.WidgetColumns * tileWidth + (_draft.WidgetColumns - 1) * spacing;
+        var height = _draft.WidgetRows * tileHeight + (_draft.WidgetRows - 1) * spacing;
+
+        PreviewWidgetFrame.Width = width;
+        PreviewWidgetFrame.Height = height;
+        PreviewSizeText.Text = $"{_draft.WidgetRows}×{_draft.WidgetColumns} · {width:0} × {height:0} px";
     }
 
     private void PreviewSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -268,7 +291,10 @@ public partial class WidgetEditorDialog : Window
             _draft.WidgetBackgroundColor,
             _savedColors);
         if (!string.IsNullOrWhiteSpace(selected))
+        {
             _draft.WidgetBackgroundColor = selected;
+            _draft.WidgetBackgroundFollowsTheme = false;
+        }
     }
 
     private void AddWidgetApplications_Click(object sender, RoutedEventArgs e)
@@ -579,6 +605,7 @@ public partial class WidgetEditorDialog : Window
         _source.WidgetDisplayMode = _draft.WidgetDisplayMode;
         _source.WidgetFolderPath = _draft.WidgetFolderPath;
         _source.WidgetBackgroundColor = _draft.WidgetBackgroundColor;
+        _source.WidgetBackgroundFollowsTheme = _draft.WidgetBackgroundFollowsTheme;
         _source.Children = new ObservableCollection<LauncherItem>(_draft.Children.Select(CloneLauncherItem));
         DialogResult = true;
         Close();

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; color: #f8f9ff; font-family: "Segoe UI Variable", "Segoe UI", sans-serif; background: linear-gradient(135deg, #111725, #1a2031); }
+  main { padding: 12px; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  h1 { margin: 0; font-size: clamp(13px, 3vw, 18px); font-weight: 650; }
+  #count { color: #9d93ff; font-size: 11px; }
+  .item { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 9px; padding: 8px; border: 1px solid #ffffff15; border-radius: 10px; background: #ffffff09; }
+  .item + .item { margin-top: 7px; }
+  .icon { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; background: #796aff30; color: #aa9fff; font-size: 15px; }
+  .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 600; }
+  .meta { margin-top: 3px; color: #aeb4ca; font-size: 9px; }
+  .progress { grid-column: 2 / 4; height: 4px; overflow: hidden; border-radius: 3px; background: #ffffff14; }
+  .progress > i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #7569ff, #4ea0ff); transition: width .6s ease; }
+  button { border: 0; border-radius: 7px; padding: 5px 8px; color: #dfe2f4; background: #ffffff12; cursor: pointer; font: inherit; font-size: 10px; }
+  button:hover { background: #ffffff22; }
+</style>
+</head>
+<body><main><header><h1>Download Manager</h1><span id="count">2 загрузки</span></header>
+<section id="list"></section></main>
+<script>
+  const jobs = [{name:'AppLauncher-update.zip', progress:67, speed:'8.4 МБ/с'}, {name:'media-pack.webm', progress:29, speed:'2.1 МБ/с'}];
+  const list = document.querySelector('#list');
+  function render() {
+    list.innerHTML = jobs.map((job, index) => `<article class="item"><span class="icon">&#8595;</span><div><div class="name">${job.name}</div><div class="meta">${job.progress}% · ${job.speed}</div></div><button onclick="toggle(${index})">${job.paused ? 'Продолжить' : 'Пауза'}</button><div class="progress"><i style="width:${job.progress}%"></i></div></article>`).join('');
+  }
+  function toggle(index) { jobs[index].paused = !jobs[index].paused; render(); }
+  setInterval(() => { jobs.forEach(job => { if (!job.paused && job.progress < 100) job.progress = Math.min(100, job.progress + 1); }); render(); }, 1800);
+  render();
+</script></body></html>

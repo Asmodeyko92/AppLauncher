@@ -1,0 +1,9 @@
+{
+  "id": "com.applauncher.clock",
+  "name": "Часы",
+  "version": "1.0.0",
+  "description": "Локальное время, дата и секунды в премиальном компактном виджете.",
+  "contentFile": "index.html",
+  "defaultRows": 2,
+  "defaultColumns": 2
+}
