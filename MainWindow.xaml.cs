@@ -157,6 +157,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         _settings = LayoutStore.Load();
         _settings.SavedColors ??= new ObservableCollection<string>();
+        PreserveLegacyWidgetBackgrounds(_settings.Items);
         UpgradeVisualDefaults();
         InitializeComponent();
         DataContext = this;
@@ -186,6 +187,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         AlwaysOnTopCheckBox.IsChecked = _settings.AlwaysOnTop;
         GlobalHotkeyCheckBox.IsChecked = _settings.GlobalHotkeyEnabled;
         LightThemeCheckBox.IsChecked = _settings.LightTheme;
+        VisualProfileCombo.SelectedValue = _settings.VisualProfile;
         FolderThumbnailsCheckBox.IsChecked = _settings.UseFolderThumbnails;
         OpenGroupsFullscreenCheckBox.IsChecked = _settings.OpenGroupsFullscreen;
         FolderThumbnailSizeSlider.Value = _settings.FolderThumbnailScale * 100;
@@ -243,6 +245,22 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
 
         _settings.VisualStyleVersion = 2;
+    }
+
+    private static void PreserveLegacyWidgetBackgrounds(IEnumerable<LauncherItem> items)
+    {
+        foreach (var item in items)
+        {
+            if (item.IsWidget
+                && item.WidgetBackgroundFollowsTheme
+                && !string.Equals(item.WidgetBackgroundColor, "#242730", StringComparison.OrdinalIgnoreCase))
+            {
+                item.WidgetBackgroundFollowsTheme = false;
+            }
+
+            if (item.IsFolder || item.IsWidget)
+                PreserveLegacyWidgetBackgrounds(item.Children);
+        }
     }
 
     public void ShowLauncher()
@@ -599,14 +617,29 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         var generation = ++_pageAnimationGeneration;
         _currentPage = targetPage;
+        _incomingSnapshotTranslate.BeginAnimation(TranslateTransform.XProperty, null);
+        _incomingSnapshotTranslate.X = _lastPageDirection * 22;
         IncomingPageSnapshot.Source = snapshot;
         IncomingPageSnapshot.Visibility = Visibility.Visible;
+        IncomingPageSnapshot.Opacity = 0.58;
         LauncherItems.Visibility = Visibility.Hidden;
         UpdatePageNavigator();
 
-        // Input has priority over ContextIdle. A fast wheel gesture can therefore
-        // replace this frame immediately instead of waiting for an intermediate page.
-        Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() =>
+        // The ready bitmap keeps the transition independent from live widgets.
+        // A new gesture cancels this animation immediately through StopPageAnimation.
+        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var duration = TimeSpan.FromMilliseconds(85);
+        var slide = new DoubleAnimation(_incomingSnapshotTranslate.X, 0, duration)
+        {
+            EasingFunction = easing,
+            FillBehavior = FillBehavior.HoldEnd
+        };
+        var fade = new DoubleAnimation(0.58, 1, duration)
+        {
+            EasingFunction = easing,
+            FillBehavior = FillBehavior.HoldEnd
+        };
+        slide.Completed += (_, _) =>
         {
             if (generation != _pageAnimationGeneration)
                 return;
@@ -618,12 +651,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 if (generation != _pageAnimationGeneration)
                     return;
 
+                _incomingSnapshotTranslate.BeginAnimation(TranslateTransform.XProperty, null);
+                _incomingSnapshotTranslate.X = 0;
+                IncomingPageSnapshot.BeginAnimation(OpacityProperty, null);
+                IncomingPageSnapshot.Opacity = 1;
                 LauncherItems.Visibility = Visibility.Visible;
                 IncomingPageSnapshot.Source = null;
                 IncomingPageSnapshot.Visibility = Visibility.Collapsed;
                 ScheduleAllPagesPreRender();
             }));
-        }));
+        };
+        _incomingSnapshotTranslate.BeginAnimation(TranslateTransform.XProperty, slide);
+        IncomingPageSnapshot.BeginAnimation(OpacityProperty, fade);
     }
 
     private void NavigateWithPageSnapshots(
@@ -754,6 +793,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
         if (IncomingPageSnapshot is not null)
         {
+            IncomingPageSnapshot.BeginAnimation(OpacityProperty, null);
+            IncomingPageSnapshot.Opacity = 1;
             IncomingPageSnapshot.Source = null;
             IncomingPageSnapshot.Visibility = Visibility.Collapsed;
         }
@@ -1337,7 +1378,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void StopDragGhost()
     {
         HideDropPlacementPreview();
-        ClearReorderPreviewTransforms();
+        ResetReorderPreview();
         ResetDropPreviewHitTest();
         if (!_dragGhostActive)
             return;
@@ -1739,6 +1780,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             var insertAfter = e.GetPosition(targetButton).X > targetButton.ActualWidth / 2;
             PreviewReorder(source, target, insertAfter);
         }
+        else
+        {
+            ResetReorderPreview();
+        }
 
         e.Handled = true;
     }
@@ -1835,6 +1880,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void ItemsArea_DragOver(object sender, DragEventArgs e)
     {
+        ResetReorderPreview();
         e.Effects = e.Data.GetDataPresent(InternalDragFormat) || e.Data.GetDataPresent(DataFormats.FileDrop)
             ? DragDropEffects.Move
             : DragDropEffects.None;
@@ -2103,6 +2149,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _reorderPreviewTransforms.Clear();
     }
 
+    private void ResetReorderPreview()
+    {
+        _previewTargetId = null;
+        _previewInsertAfter = false;
+        ClearReorderPreviewTransforms();
+    }
+
     private Dictionary<Guid, Point> CaptureTilePositions()
     {
         LauncherItems.UpdateLayout();
@@ -2156,7 +2209,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_activeDragItem is null)
             return;
         if (LauncherItems.ItemContainerGenerator.ContainerFromItem(_activeDragItem) is FrameworkElement container)
-            container.Opacity = 0.28;
+            container.Opacity = 0;
     }
 
     private ObservableCollection<LauncherItem>? FindParentCollection(LauncherItem target)
@@ -2672,6 +2725,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         SaveLayout();
     }
 
+    private void VisualProfileChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_initializing || VisualProfileCombo.SelectedValue is not string profile)
+            return;
+
+        _settings.VisualProfile = profile;
+        ApplyTheme(_settings.LightTheme);
+        SaveLayout();
+    }
+
     private void ChooseWindowColor_Click(object sender, RoutedEventArgs e)
     {
         var selected = ColorPickerDialog.Show(this, "Фон приложения", EffectiveWindowColor, _settings.SavedColors);
@@ -2781,12 +2844,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _settings.WindowOpacity = 1.0;
         _settings.TileShadowEnabled = true;
         _settings.TileShadowOpacity = 0.25;
+        _settings.VisualProfile = "Glass";
 
         _initializing = true;
         TileOpacitySlider.Value = EffectiveTileOpacity * 100;
         WindowOpacitySlider.Value = 100;
         TileShadowCheckBox.IsChecked = true;
         TileShadowOpacitySlider.Value = 25;
+        VisualProfileCombo.SelectedValue = _settings.VisualProfile;
         _initializing = false;
         Opacity = 1;
 
@@ -2855,14 +2920,33 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void ApplyTheme(bool light)
     {
         var tileOpacity = EffectiveTileOpacity;
+        var visualProfile = _settings.VisualProfile is "Solid" or "Soft" ? _settings.VisualProfile : "Glass";
+        var panelColor = visualProfile switch
+        {
+            "Solid" => light ? "#FFF8F9FC" : "#FF151820",
+            "Soft" => light ? "#F2F7F8FC" : "#F2191D27",
+            _ => light ? "#EFFFFFFF" : "#E6171A22"
+        };
+        var tileColor = visualProfile switch
+        {
+            "Solid" => light ? "#FFFFFFFF" : "#FF20242E",
+            "Soft" => light ? "#F9FFFFFF" : "#D91E222D",
+            _ => light ? "#F2FFFFFF" : "#16FFFFFF"
+        };
+        var tileHoverColor = visualProfile switch
+        {
+            "Solid" => light ? "#FFFDFDFF" : "#FF292E3A",
+            "Soft" => light ? "#FFFFFFFF" : "#F52A2F3B",
+            _ => light ? "#FFFFFFFF" : "#22FFFFFF"
+        };
         Resources["WindowBrush"] = Brush(EffectiveWindowColor);
-        Resources["PanelBrush"] = Brush(light ? "#FFFFFFFF" : "#FF171A22");
+        Resources["PanelBrush"] = Brush(panelColor);
         Resources["TextBrush"] = Brush(light ? "#FF171A24" : "#FFF7F8FC");
         Resources["MutedTextBrush"] = Brush(light ? "#8A252A38" : "#A3FFFFFF");
         Resources["WindowBorderBrush"] = Brush(light ? "#16101828" : "#20FFFFFF");
         Resources["ColorSwatchBorderBrush"] = Brush(light ? "#5C101828" : "#70FFFFFF");
-        Resources["TileBrush"] = Brush(light ? "#FFFFFFFF" : "#0CFFFFFF");
-        Resources["TileHoverBrush"] = Brush(light ? "#FFFFFFFF" : "#18FFFFFF");
+        Resources["TileBrush"] = Brush(tileColor);
+        Resources["TileHoverBrush"] = Brush(tileHoverColor);
         Resources["LauncherTileBrush"] = Brush(EffectiveTileColor, tileOpacity);
         Resources["LauncherTileHoverBrush"] = Brush(EffectiveTileColor, Math.Min(1, tileOpacity + (light ? 0.04 : 0.08)));
         Resources["TileBorderBrush"] = Brush(light ? "#17101828" : "#18FFFFFF");
@@ -2885,11 +2969,24 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             new Point(0, 0),
             new Point(1, 1));
         Resources["NegativeSolidBrush"] = Brush(EffectiveNegativeActionColor);
+        ApplyThemeWidgetBackgrounds(_settings.Items, light);
         UpdateTileShadowEffect();
         UpdateAppearanceLabels();
         UpdatePinButton();
         Background = (System.Windows.Media.Brush)Resources["WindowBrush"];
         ApplyNativeWindowStyle();
+    }
+
+    private static void ApplyThemeWidgetBackgrounds(IEnumerable<LauncherItem> items, bool light)
+    {
+        var defaultWidgetColor = light ? "#FFF7F9FD" : "#242730";
+        foreach (var item in items)
+        {
+            if (item.IsWidget)
+                item.ApplyThemeWidgetBackground(defaultWidgetColor);
+            if (item.IsFolder || item.IsWidget)
+                ApplyThemeWidgetBackgrounds(item.Children, light);
+        }
     }
 
     private void ApplyNativeWindowStyle()

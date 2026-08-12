@@ -11,6 +11,7 @@ public sealed class LauncherSettings
     public int GlobalHotkeyModifiers { get; set; } = 0x0003;
     public int GlobalHotkeyVirtualKey { get; set; } = 0x20;
     public bool LightTheme { get; set; }
+    public string VisualProfile { get; set; } = "Glass";
     public bool UseFolderThumbnails { get; set; }
     public bool OpenGroupsFullscreen { get; set; }
     public double FolderThumbnailScale { get; set; } = 0.92;

@@ -118,6 +118,7 @@ public partial class WidgetEditorDialog : Window
             WidgetDisplayMode = source.WidgetDisplayMode,
             WidgetFolderPath = source.WidgetFolderPath,
             WidgetBackgroundColor = source.WidgetBackgroundColor,
+            WidgetBackgroundFollowsTheme = source.WidgetBackgroundFollowsTheme,
             Children = new ObservableCollection<LauncherItem>(source.Children.Select(CloneLauncherItem))
         };
 
@@ -290,7 +291,10 @@ public partial class WidgetEditorDialog : Window
             _draft.WidgetBackgroundColor,
             _savedColors);
         if (!string.IsNullOrWhiteSpace(selected))
+        {
             _draft.WidgetBackgroundColor = selected;
+            _draft.WidgetBackgroundFollowsTheme = false;
+        }
     }
 
     private void AddWidgetApplications_Click(object sender, RoutedEventArgs e)
@@ -601,6 +605,7 @@ public partial class WidgetEditorDialog : Window
         _source.WidgetDisplayMode = _draft.WidgetDisplayMode;
         _source.WidgetFolderPath = _draft.WidgetFolderPath;
         _source.WidgetBackgroundColor = _draft.WidgetBackgroundColor;
+        _source.WidgetBackgroundFollowsTheme = _draft.WidgetBackgroundFollowsTheme;
         _source.Children = new ObservableCollection<LauncherItem>(_draft.Children.Select(CloneLauncherItem));
         DialogResult = true;
         Close();

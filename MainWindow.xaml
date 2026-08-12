@@ -478,7 +478,7 @@
         </Style>
     </Window.Resources>
 
-    <Border x:Name="RootBorder" Margin="0" Background="{DynamicResource WindowBrush}"
+    <Border x:Name="RootBorder" Margin="0" Background="Transparent"
             BorderBrush="{DynamicResource WindowBorderBrush}" BorderThickness="1" CornerRadius="10">
         <Grid>
             <Grid.RowDefinitions>
@@ -486,6 +486,26 @@
                 <RowDefinition Height="52"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
+            <Grid IsHitTestVisible="False" Panel.ZIndex="-1">
+                <Border Background="{DynamicResource WindowBrush}"/>
+                <Border>
+                    <Border.Background>
+                        <RadialGradientBrush Center="0.78,0.12" GradientOrigin="0.78,0.12" RadiusX="0.9" RadiusY="0.9">
+                            <GradientStop Color="#242C79B9" Offset="0"/>
+                            <GradientStop Color="#0A152946" Offset="0.46"/>
+                            <GradientStop Color="#00101218" Offset="1"/>
+                        </RadialGradientBrush>
+                    </Border.Background>
+                </Border>
+                <Ellipse Width="520" Height="340" HorizontalAlignment="Right" VerticalAlignment="Top"
+                         Margin="0,-150,-140,0" Fill="#164D75FF">
+                    <Ellipse.Effect><BlurEffect Radius="70"/></Ellipse.Effect>
+                </Ellipse>
+                <Ellipse Width="430" Height="280" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                         Margin="-170,0,0,-110" Fill="#1234D399">
+                    <Ellipse.Effect><BlurEffect Radius="80"/></Ellipse.Effect>
+                </Ellipse>
+            </Grid>
 
             <!-- Единая компактная командная строка -->
             <Grid Grid.Row="0" Margin="18,10,16,8" Background="Transparent" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
@@ -861,6 +881,15 @@
                                 <StackPanel>
                                     <TextBlock Text="Оформление" Style="{StaticResource SettingsSubsectionTitle}"/>
                                     <CheckBox x:Name="LightThemeCheckBox" Style="{StaticResource ToggleSwitch}" Content="Светлая тема" Checked="ThemeChanged" Unchecked="ThemeChanged"/>
+                                    <TextBlock Text="Визуальный профиль" Margin="0,17,0,0" Foreground="{DynamicResource TextBrush}"/>
+                                    <ComboBox x:Name="VisualProfileCombo" Margin="0,6,0,0" Height="38"
+                                              SelectedValuePath="Tag" SelectionChanged="VisualProfileChanged">
+                                        <ComboBoxItem Tag="Glass" Content="Стекло - объём и мягкое свечение"/>
+                                        <ComboBoxItem Tag="Soft" Content="Мягкий - спокойные поверхности"/>
+                                        <ComboBoxItem Tag="Solid" Content="Контрастный - чёткие панели"/>
+                                    </ComboBox>
+                                    <TextBlock Text="Профиль меняет глубину и материал поверхностей. Цвета, размеры и прозрачность ниже остаются под вашим контролем."
+                                               Margin="0,7,8,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="10.5" TextWrapping="Wrap"/>
                                     <Grid Margin="0,17,0,0">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                         <StackPanel VerticalAlignment="Center"><TextBlock Text="Фон приложения" Foreground="{DynamicResource TextBrush}"/><TextBlock x:Name="WindowColorValueText" Margin="0,3,0,0" Foreground="{DynamicResource MutedTextBrush}" FontSize="11"/></StackPanel>
